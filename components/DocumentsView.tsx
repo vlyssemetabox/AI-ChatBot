@@ -38,6 +38,7 @@ export function DocumentsView() {
     const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteProgress, setDeleteProgress] = useState({ current: 0, total: 0 });
+    const [totalUploads, setTotalUploads] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cancelRef = useRef(false);
 
@@ -88,17 +89,24 @@ export function DocumentsView() {
     const handleFiles = async (files: FileList) => {
         setUploading(true);
         setError('');
+        setTotalUploads(files.length);
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             setCurrentFile(file.name);
-            setUploadProgress(0);
+            // setUploadProgress(0); // Removed to prevent visual reset loop, relying on global calculation
 
-            // Simulate progress since fetch doesn't support it natively
+            // Simulate progress for current file 
+            // We'll map this 0-100 to the "slice" of total progress
+            let currentFileProgress = 0;
             const progressInterval = setInterval(() => {
                 setUploadProgress(prev => {
-                    if (prev >= 90) return prev;
-                    return prev + 10;
+                    // Update internal simulate progress
+                    currentFileProgress = currentFileProgress >= 90 ? currentFileProgress : currentFileProgress + 10;
+
+                    // Calculate global progress: ((files_done * 100) + current_file_progress) / total_files
+                    const globalProgress = ((i * 100) + currentFileProgress) / files.length;
+                    return globalProgress;
                 });
             }, 500);
 
@@ -112,7 +120,8 @@ export function DocumentsView() {
                 });
 
                 clearInterval(progressInterval);
-                setUploadProgress(100);
+                // Ensure we hit the next "step" in global progress
+                setUploadProgress(((i + 1) * 100) / files.length);
 
                 if (!response.ok) {
                     const data = await response.json();
@@ -142,8 +151,11 @@ export function DocumentsView() {
         }
 
         setUploading(false);
-        setCurrentFile('');
-        setUploadProgress(0);
+        // Delay clearing the state slightly so user sees 100% completion
+        setTimeout(() => {
+            setCurrentFile('');
+            setUploadProgress(0);
+        }, 1000);
     };
 
     const toggleSelection = (id: string) => {
@@ -246,7 +258,8 @@ export function DocumentsView() {
                             <div className="w-full max-w-xs space-y-2 mb-4">
                                 <Progress value={uploadProgress} className="h-2" />
                                 <p className="text-xs text-muted-foreground truncate">
-                                    Uploading {currentFile} ({uploadProgress}%)
+                                    Uploading {currentFile} ({Math.round(uploadProgress)}%)
+                                    <span className="block mt-1 opacity-75">File {uploading && currentFile ? (Math.floor((uploadProgress / 100) * (totalUploads || 1)) + 1) : 0} of {totalUploads}</span>
                                 </p>
                             </div>
                         )}
