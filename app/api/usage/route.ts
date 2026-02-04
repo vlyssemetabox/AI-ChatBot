@@ -6,40 +6,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayIso = today.toISOString();
-
-        // 1. Get Totals (Lifetime)
-        const { data: totalTokensData, error: totalTokensError } = await supabase
-            .from('usage_logs')
-            .select('tokens_in, tokens_out'); // We'll sum in JS or use .rpc if we had one. JS is fine for now unless huge.
-        // Actually, for performance with many logs, .rpc is better. But we don't have one.
-        // Let's try to trust Supabase to handle a few thousand rows. If millions, we need aggregation.
-        // For now, let's just use .select with no limit? That's dangerous.
-        // Better: Create an RPC? Or just sum "Today" efficiently and "Total" we can cache?
-        // Let's stick to simple select for now, assuming not huge scale yet.
-
-        if (totalTokensError) throw totalTokensError;
-
-        let totalTokens = 0;
-        let totalRequests = totalTokensData.length;
-
-        totalTokensData.forEach(row => {
-            totalTokens += (row.tokens_in || 0) + (row.tokens_out || 0);
-        });
-
-        // 2. Get Today's Stats
-        // We can filter the cached array in JS to save a DB call, or query DB.
-        // Querying DB is cleaner for timezone handling if we did it there, but here we passed ISO string.
-        const todayLogs = totalTokensData.filter(row => row.created_at >= todayIso);
-        // Wait, 'created_at' is not in the select above.
-
-        // Let's redo the strategy:
-        // Query ALL logs with created_at.
+        // Query ALL logs with created_at to calculate totals and daily stats
         const { data: allLogs, error: logsError } = await supabase
             .from('usage_logs')
             .select('tokens_in, tokens_out, created_at');
+
+        if (logsError) throw logsError;
 
         if (logsError) throw logsError;
 
