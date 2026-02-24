@@ -10,8 +10,16 @@ coverage/
 build/
 dist/
 
-# Misc
-.DS_Store
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Vercel
+.vercel
+
+# Environment / Secrets
 .env
 .env.local
 .env.development.local
@@ -24,30 +32,31 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# Editor
+# Editor / IDE
 .vscode/
+.cursor/
 .idea/
+.zed/
 *.swp
 *.swo
 *~
 
+# AI Agent configs (contain API keys)
+.gemini/
+.agent/
+.agents/
+.codex/
+.mcp.json
+opencode.json
+skills-lock.json
+
 # OS
+.DS_Store
 Thumbs.db
 
 # Uploads and data
 uploads/
 server/data/
 
-# Environment
-.env
-
-# Next.js
-/.next/
-/out/
-next-env.d.ts
-*.tsbuildinfo
-
-# Vercel
-.vercel
-
-.vercel
+# Drizzle
+drizzle/
