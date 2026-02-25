@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server';
-import { supabase } from '@/lib/db/supabase';
+import { db } from '@/lib/db/neon';
+import { documents } from '@/lib/db/schema';
 import { deleteDocumentFromVectorStore } from '@/lib/services/vectorStore';
+import { del } from '@vercel/blob';
+import { eq, and } from 'drizzle-orm';
+import { getUserId } from '@/lib/auth/utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,42 +18,41 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const userId = await getUserId();
         const { id } = await params;
 
-        // Get document metadata
-        const { data: doc, error: fetchError } = await supabase
-            .from('documents')
-            .select('*')
-            .eq('id', id)
-            .single();
+        // Get document metadata and verify ownership
+        const [doc] = await db
+            .select()
+            .from(documents)
+            .where(and(eq(documents.id, id), eq(documents.userId, userId)))
+            .limit(1);
 
-        if (fetchError || !doc) {
-            return Response.json({ error: 'Document not found' }, { status: 404 });
+        if (!doc) {
+            return Response.json({ error: 'Document not found or unauthorized' }, { status: 404 });
         }
 
-        // Delete from Supabase Storage
-        const { error: storageError } = await supabase.storage
-            .from('documents')
-            .remove([doc.storage_path]);
-
-        if (storageError) {
-            console.warn('Could not delete file from storage:', storageError);
+        // Delete from Vercel Blob (if URL exists)
+        if (doc.blobUrl) {
+            try {
+                await del(doc.blobUrl);
+            } catch (blobError) {
+                console.warn('Could not delete file from Vercel Blob:', blobError);
+            }
         }
 
-        // Delete from vector store
-        await deleteDocumentFromVectorStore(id);
+        // Delete from vector store (embeddings)
+        await deleteDocumentFromVectorStore(userId, id);
 
         // Delete metadata from database
-        const { error: dbError } = await supabase.from('documents').delete().eq('id', id);
-
-        if (dbError) {
-            console.error('Error deleting document metadata:', dbError);
-            return Response.json({ error: dbError.message }, { status: 500 });
-        }
+        await db.delete(documents).where(and(eq(documents.id, id), eq(documents.userId, userId)));
 
         return Response.json({ success: true, message: 'Document deleted' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Delete error:', error);
+        if (error.message.includes('Unauthorized')) {
+            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
         return Response.json({ error: (error as Error).message }, { status: 500 });
     }
 }

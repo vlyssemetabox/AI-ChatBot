@@ -1,31 +1,36 @@
 import { NextRequest } from 'next/server';
-import { supabase } from '@/lib/db/supabase';
+import { db } from '@/lib/db/neon';
+import { documents } from '@/lib/db/schema';
 import { processDocument, chunkText } from '@/lib/services/documentProcessor';
 import { addDocumentToVectorStore } from '@/lib/services/vectorStore';
+import { put } from '@vercel/blob';
 import { v4 as uuidv4 } from 'uuid';
+import { desc, eq } from 'drizzle-orm';
+import { getUserId } from '@/lib/auth/utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/documents
- * List all uploaded documents
+ * List all uploaded documents for the user
  */
 export async function GET() {
     try {
-        const { data, error } = await supabase
-            .from('documents')
-            .select('*')
-            .order('upload_date', { ascending: false });
+        const userId = await getUserId();
 
-        if (error) {
-            console.error('Error fetching documents:', error);
-            return Response.json({ error: error.message }, { status: 500 });
-        }
+        const data = await db
+            .select()
+            .from(documents)
+            .where(eq(documents.userId, userId))
+            .orderBy(desc(documents.uploadDate));
 
         return Response.json({ documents: data });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error listing documents:', error);
+        if (error.message.includes('Unauthorized')) {
+            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
         return Response.json({ error: (error as Error).message }, { status: 500 });
     }
 }
@@ -36,6 +41,7 @@ export async function GET() {
  */
 export async function POST(req: NextRequest) {
     try {
+        const userId = await getUserId();
         const formData = await req.formData();
         const file = formData.get('file') as File;
 
@@ -67,22 +73,18 @@ export async function POST(req: NextRequest) {
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        // Upload to Supabase Storage
-        const storagePath = `documents/${documentId}/${filename}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('documents')
-            .upload(storagePath, buffer, {
+        // Upload to Vercel Blob
+        let blobUrl = '';
+        try {
+            const blob = await put(`documents/${documentId}/${filename}`, buffer, {
+                access: 'public',
                 contentType: file.type,
-                upsert: false,
             });
-
-        if (uploadError) {
-            console.error('Error uploading to storage:', uploadError);
-            return Response.json({ error: uploadError.message }, { status: 500 });
+            blobUrl = blob.url;
+        } catch (blobError) {
+            console.warn('Vercel Blob upload failed (BLOB_READ_WRITE_TOKEN may not be set):', blobError);
+            // Continue without blob storage — document processing still works
         }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(storagePath);
 
         // Extract text from document
         const text = await processDocument(buffer, filename);
@@ -94,25 +96,20 @@ export async function POST(req: NextRequest) {
         // Chunk the text
         const chunks = chunkText(text);
 
-        // Store metadata in Supabase FIRST (before embeddings)
-        const { error: dbError } = await supabase.from('documents').insert({
+        // Store metadata in Neon via Drizzle
+        await db.insert(documents).values({
             id: documentId,
+            userId: userId,
             filename,
-            storage_path: storagePath,
-            storage_url: urlData.publicUrl,
-            upload_date: new Date().toISOString(),
+            blobUrl: blobUrl || null,
+            uploadDate: new Date(),
             size: file.size,
             chunks: chunks.length,
-            text_length: text.length,
+            textLength: text.length,
         });
 
-        if (dbError) {
-            console.error('Error saving document metadata:', dbError);
-            return Response.json({ error: dbError.message }, { status: 500 });
-        }
-
-        // Now add to vector store (references the document_id we just created)
-        await addDocumentToVectorStore(documentId, chunks, {
+        // Add to vector store (embeddings)
+        await addDocumentToVectorStore(userId, documentId, chunks, {
             filename,
             uploadDate: new Date().toISOString(),
             documentId,
@@ -129,8 +126,11 @@ export async function POST(req: NextRequest) {
                 textLength: text.length,
             },
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Upload error:', error);
+        if (error.message.includes('Unauthorized')) {
+            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
         return Response.json({ error: (error as Error).message }, { status: 500 });
     }
 }

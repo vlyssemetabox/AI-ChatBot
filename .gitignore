@@ -60,3 +60,4 @@ server/data/
 
 # Drizzle
 drizzle/
+.env*.local

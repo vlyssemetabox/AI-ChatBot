@@ -597,3 +597,35 @@ The chatbot is now a fully functional, professionally designed RAG system with p
 **Last Updated**: 2026-01-30 21:45:00 +04:00  
 **Status**: Development Complete, Ready for Network Testing  
 **Next Steps**: Restart server, configure firewall, test from network devices
+
+---
+
+## Phase 5 Update: Full SaaS Transformation (Next.js, Neon, Vercel)
+**Date**: 2026-02-25  
+**Objective**: Transform the local AI Chatbot (Vite/Express) into a production-ready Next.js SaaS app with proper security, authentication, and database.
+
+### 1. New Technology Stack
+- **Frontend/Backend**: Next.js 16 (App Router) replacing Vite and Express
+- **Database**: Neon PostgreSQL serverless database (replacing local JSON)
+- **ORM**: Drizzle ORM replacing raw SQL and queries
+- **Authentication**: Neon Auth (Powered by Better Auth)
+- **Storage**: Vercel Blob (replacing local filesystem for Document uploads)
+- **Styling**: Tailwind CSS + Shadcn/ui
+
+### 2. Authentication & Data Isolation Implementation
+- Integrated **Neon Auth** with `/auth/login`, `/auth/signup`, `/auth/forgot-password`, and `/auth/reset-password` routes.
+- Implemented **custom error mapping** for `INVALID_EMAIL_OR_PASSWORD` and duplicate emails in the registration flow.
+- Configured **Next.js Middleware** for protecting private routes like `/dashboard`.
+- Implemented **Data Isolation/Tenancy**: 
+  - All DB tables strictly require a `user_id`.
+  - Fetch queries in `/api/documents`, `/api/chat`, `/api/settings`, and `/api/usage` use `getUserId()` to enforce data boundaries.
+  - Vercel Blob uploads persist the URL into the Neon Drizzle schema with the correct user ID.
+
+### 3. Architecture Adjustments
+- Fixed Drizzle ORM foreign key limitations against Neon Auth's internal `.users` table by selectively dropping strict hard constraints using a custom `.env` initialized script (`drop-fks.ts`).
+- Added robust error handling and UI fallback rendering (e.g. mapping `null` or `undefined` text_length metrics to 0 in Document View).
+- Completely removed legacy Express server backend directory and routing logic.
+
+### 4. Remaining Phases
+- **Phase 6**: Chat History & Conversation UI (saving the actual dialogue messages to the Drizzle database schemas).
+- **Phase 7**: Billing Stub & Context Metering (free tier quotas, Stripe/Peach Payments integrations).

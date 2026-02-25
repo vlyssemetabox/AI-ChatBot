@@ -3,8 +3,8 @@ import './globals.css';
 import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
-    title: 'AI Assistant',
-    description: 'AI-powered document Q&A assistant with RAG capabilities',
+    title: 'Sherlock — AI Document Assistant',
+    description: 'AI-powered RAG chatbot that reads your documents and answers questions with source citations.',
 };
 
 export default function RootLayout({

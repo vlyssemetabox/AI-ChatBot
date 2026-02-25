@@ -72,9 +72,7 @@ export const verifications = pgTable('verification', {
 // Documents uploaded by users
 export const documents = pgTable('documents', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: text('user_id')
-        .notNull()
-        .references(() => users.id, { onDelete: 'cascade' }),
+    userId: text('user_id').notNull(),
     filename: text('filename').notNull(),
     blobUrl: text('blob_url'),
     uploadDate: timestamp('upload_date').defaultNow().notNull(),
@@ -88,9 +86,7 @@ export const documentEmbeddings = pgTable(
     'document_embeddings',
     {
         id: uuid('id').primaryKey().defaultRandom(),
-        userId: text('user_id')
-            .notNull()
-            .references(() => users.id, { onDelete: 'cascade' }),
+        userId: text('user_id').notNull(),
         documentId: uuid('document_id')
             .notNull()
             .references(() => documents.id, { onDelete: 'cascade' }),
@@ -110,9 +106,7 @@ export const chatbotSettings = pgTable(
     'chatbot_settings',
     {
         id: uuid('id').primaryKey().defaultRandom(),
-        userId: text('user_id')
-            .notNull()
-            .references(() => users.id, { onDelete: 'cascade' }),
+        userId: text('user_id').notNull(),
         key: varchar('key', { length: 255 }).notNull(),
         value: jsonb('value'),
         updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -125,9 +119,7 @@ export const usageLogs = pgTable(
     'usage_logs',
     {
         id: uuid('id').primaryKey().defaultRandom(),
-        userId: text('user_id')
-            .notNull()
-            .references(() => users.id, { onDelete: 'cascade' }),
+        userId: text('user_id').notNull(),
         model: text('model'),
         tokensIn: integer('tokens_in').default(0),
         tokensOut: integer('tokens_out').default(0),
@@ -141,9 +133,7 @@ export const conversations = pgTable(
     'conversations',
     {
         id: uuid('id').primaryKey().defaultRandom(),
-        userId: text('user_id')
-            .notNull()
-            .references(() => users.id, { onDelete: 'cascade' }),
+        userId: text('user_id').notNull(),
         title: text('title').default('New Chat'),
         createdAt: timestamp('created_at').defaultNow().notNull(),
         updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -170,10 +160,7 @@ export const messages = pgTable(
 // User billing plans (stub for now)
 export const userPlans = pgTable('user_plans', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: text('user_id')
-        .notNull()
-        .unique()
-        .references(() => users.id, { onDelete: 'cascade' }),
+    userId: text('user_id').notNull().unique(),
     plan: varchar('plan', { length: 50 }).default('free').notNull(),
     status: varchar('status', { length: 50 }).default('active').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),

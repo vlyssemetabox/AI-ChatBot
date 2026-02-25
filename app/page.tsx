@@ -1,171 +1,302 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { MessageSquare, Settings, Sparkles, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Sparkles, FileSearch, Shield, MessageSquare, Upload, Brain, Zap, ArrowRight, ChevronRight, Check } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { ChatView } from '@/components/ChatView';
-import { SettingsView } from '@/components/SettingsView';
 
-type View = 'chat' | 'settings';
+const features = [
+    {
+        icon: FileSearch,
+        title: 'Smart Document Search',
+        description: 'Upload your documents and ask questions in natural language. Sherlock finds the answers instantly using advanced RAG.',
+    },
+    {
+        icon: Shield,
+        title: 'AI Guardrails',
+        description: 'Built-in safeguards ensure responses stay on-topic and within your document knowledge base. No hallucinations.',
+    },
+    {
+        icon: MessageSquare,
+        title: 'Chat History',
+        description: 'All your conversations are saved and searchable. Pick up right where you left off, every time.',
+    },
+    {
+        icon: Upload,
+        title: 'Multi-Format Upload',
+        description: 'Supports PDF, DOCX, TXT and more. Drop your files and Sherlock handles the rest — chunking, embedding, indexing.',
+    },
+    {
+        icon: Brain,
+        title: 'Contextual Understanding',
+        description: 'Powered by vector similarity search and LLM reasoning for deep, nuanced answers with source citations.',
+    },
+    {
+        icon: Zap,
+        title: 'Lightning Fast',
+        description: 'Built on Cerebras inference for blazing speed. Get answers in milliseconds, not seconds.',
+    },
+];
 
-interface BrandingSettings {
-    company_name?: string;
-    logo_url?: string;
-    logo_dark_url?: string;
-    faqs?: string[];
-}
+const steps = [
+    { step: '01', title: 'Upload Documents', description: 'Drop your PDFs, docs, or text files into Sherlock.' },
+    { step: '02', title: 'Ask Questions', description: 'Type your question in natural language — Sherlock understands context.' },
+    { step: '03', title: 'Get Cited Answers', description: 'Receive accurate answers with direct source references from your docs.' },
+];
 
-export default function Home() {
-    const [currentView, setCurrentView] = useState<View>('chat');
-    const [isLoading, setIsLoading] = useState(true);
-    const [branding, setBranding] = useState<BrandingSettings>({
-        company_name: "AI Assistant",
-        logo_url: "",
-        logo_dark_url: "",
-        faqs: []
-    });
+const plans = [
+    {
+        name: 'Free',
+        price: '$0',
+        period: '/month',
+        description: 'Perfect for trying Sherlock out',
+        features: ['5 documents', '50 queries/day', 'Basic RAG search', 'Chat history'],
+        cta: 'Get Started',
+        highlighted: false,
+    },
+    {
+        name: 'Pro',
+        price: '$19',
+        period: '/month',
+        description: 'For professionals and small teams',
+        features: ['Unlimited documents', 'Unlimited queries', 'Advanced RAG + reranking', 'Priority support', 'API access'],
+        cta: 'Start Free Trial',
+        highlighted: true,
+    },
+    {
+        name: 'Enterprise',
+        price: 'Custom',
+        period: '',
+        description: 'For organizations at scale',
+        features: ['Everything in Pro', 'SSO & SAML', 'Custom AI guardrails', 'On-premise deployment', 'Dedicated support'],
+        cta: 'Contact Sales',
+        highlighted: false,
+    },
+];
 
-    useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const res = await fetch('/api/settings');
-                const data = await res.json();
-                if (data?.branding) {
-                    setBranding({
-                        company_name: data.branding.company_name || "AI Assistant",
-                        logo_url: data.branding.logo_url || "",
-                        logo_dark_url: data.branding.logo_dark_url || "",
-                        faqs: data.faqs || []
-                    });
-                }
-            } catch (error) {
-                console.error("Failed to fetch branding:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchSettings();
-    }, []);
-
-    // Dynamic Favicon Update
-    useEffect(() => {
-        if (isLoading) return;
-
-        const updateFavicon = (url: string) => {
-            let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-            if (!link) {
-                link = document.createElement('link');
-                link.rel = 'icon';
-                document.getElementsByTagName('head')[0].appendChild(link);
-            }
-            link.href = url;
-        };
-
-        if (branding.logo_url) {
-            updateFavicon(branding.logo_url);
-        } else {
-            // Revert to default or generic if needed, here we just keep it or could set to a default path
-            updateFavicon('/favicon.ico');
-        }
-    }, [branding.logo_url, isLoading]);
-
-    // Logo Logic Helpers
-    const hasLightLogo = !!branding.logo_url;
-    const hasDarkLogo = !!branding.logo_dark_url;
-
-    if (isLoading) {
-        return (
-            <div className="h-[100dvh] flex items-center justify-center bg-background">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-muted-foreground animate-pulse">Loading...</p>
-                </div>
-            </div>
-        );
-    }
-
+export default function LandingPage() {
     return (
-        <div className="h-[100dvh] flex flex-col bg-background text-foreground">
-            {/* Header */}
-            <header className="flex-none border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-                <div className="flex items-center justify-between px-4 md:px-6 h-16 max-w-7xl mx-auto w-full">
-                    <h1
-                        className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => { setCurrentView('chat'); window.location.reload(); }}
-                    >
-                        {hasLightLogo ? (
-                            <>
-                                {/* Light Mode Logo: Visible in light mode, hidden in dark mode IF dark logo exists */}
-                                <img
-                                    src={branding.logo_url}
-                                    alt="Company Logo"
-                                    className={`h-8 md:h-9 object-contain max-w-[150px] ${hasDarkLogo ? 'dark:hidden' : ''}`}
-                                />
-                                {/* Dark Mode Logo: Hidden in light mode, visible in dark mode */}
-                                {hasDarkLogo && (
-                                    <img
-                                        src={branding.logo_dark_url}
-                                        alt="Company Logo"
-                                        className="h-8 md:h-9 object-contain max-w-[150px] hidden dark:block"
-                                    />
-                                )}
-                            </>
-                        ) : (
-                            <div className="bg-primary/10 p-2 rounded-lg">
-                                <Sparkles className="w-5 h-5 text-primary" />
-                            </div>
-                        )}
-
-                        <span className="text-lg font-semibold hidden md:inline-block ml-2 text-foreground">
-                            {branding.company_name}
-                        </span>
-                    </h1>
-
-                    <div className="flex gap-2 items-center">
-                        {/* Theme Toggle in Header */}
+        <div className="min-h-screen bg-background text-foreground">
+            {/* Navigation */}
+            <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
+                <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-16">
+                    <div className="flex items-center gap-2">
+                        <div className="bg-primary/10 p-2 rounded-xl">
+                            <Sparkles className="w-5 h-5 text-primary" />
+                        </div>
+                        <span className="text-lg font-bold">Sherlock</span>
+                    </div>
+                    <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
+                        <a href="#features" className="hover:text-foreground transition-colors">Features</a>
+                        <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
+                        <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+                    </div>
+                    <div className="flex items-center gap-3">
                         <ThemeToggle />
-
-                        <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
-
-                        <Button
-                            variant={currentView === 'chat' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setCurrentView('chat')}
-                            className="gap-2 transition-all"
+                        <Link
+                            href="/auth/login"
+                            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                         >
-                            <MessageSquare className="w-4 h-4" />
-                            <span className="hidden sm:inline">Chat</span>
-                        </Button>
-                        <Button
-                            variant={currentView === 'settings' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setCurrentView('settings')}
-                            className="gap-2 transition-all"
+                            Sign in
+                        </Link>
+                        <Link
+                            href="/auth/signup"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
                         >
-                            <Settings className="w-4 h-4" />
-                            <span className="hidden sm:inline">Settings</span>
-                        </Button>
+                            Get Started
+                            <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
                     </div>
                 </div>
-            </header>
+            </nav>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-hidden flex flex-col relative w-full h-full">
-                <div className="flex-1 min-h-0 w-full">
-                    <div className={currentView === 'chat' ? 'block h-full' : 'hidden'}>
-                        <ChatView
-                            companyName={branding.company_name}
-                            logoUrl={branding.logo_url}
-                            logoDarkUrl={branding.logo_dark_url}
-                            faqs={branding.faqs}
-                        />
-                    </div>
-                    <div className={currentView === 'settings' ? 'block h-full' : 'hidden'}>
-                        <SettingsView isActive={currentView === 'settings'} />
+            {/* Hero */}
+            <section className="relative overflow-hidden">
+                {/* Background decoration */}
+                <div className="absolute inset-0 -z-10">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+                    <div className="absolute top-40 right-0 w-[400px] h-[400px] bg-primary/3 rounded-full blur-3xl" />
+                </div>
+
+                <div className="max-w-7xl mx-auto px-6 pt-24 pb-20 md:pt-32 md:pb-28">
+                    <div className="max-w-3xl mx-auto text-center space-y-8">
+                        {/* Badge */}
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border bg-card text-sm text-muted-foreground">
+                            <Zap className="w-3.5 h-3.5 text-primary" />
+                            Powered by Cerebras & Jina AI
+                        </div>
+
+                        <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
+                            Your documents,{' '}
+                            <span className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
+                                answered instantly
+                            </span>
+                        </h1>
+
+                        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                            Sherlock is an AI-powered assistant that reads your documents and answers your questions
+                            with source citations. Upload, ask, and get accurate answers in seconds.
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <Link
+                                href="/auth/signup"
+                                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium text-base hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
+                            >
+                                Start for Free
+                                <ArrowRight className="w-4 h-4" />
+                            </Link>
+                            <a
+                                href="#how-it-works"
+                                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl border border-border font-medium text-base hover:bg-muted/50 transition-colors"
+                            >
+                                See how it works
+                                <ChevronRight className="w-4 h-4" />
+                            </a>
+                        </div>
                     </div>
                 </div>
-            </main>
+            </section>
+
+            {/* Features */}
+            <section id="features" className="py-24 bg-muted/30">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="text-center space-y-4 mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold">Everything you need</h2>
+                        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                            From document ingestion to intelligent answers — Sherlock handles the entire RAG pipeline.
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {features.map((feature) => (
+                            <div
+                                key={feature.title}
+                                className="group p-6 rounded-2xl border border-border bg-card hover:shadow-lg hover:shadow-black/5 hover:border-primary/20 transition-all duration-300"
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                                    <feature.icon className="w-6 h-6 text-primary" />
+                                </div>
+                                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* How It Works */}
+            <section id="how-it-works" className="py-24">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="text-center space-y-4 mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold">How it works</h2>
+                        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                            Three simple steps to unlock your documents with AI.
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                        {steps.map((s, i) => (
+                            <div key={s.step} className="relative text-center space-y-4">
+                                <div className="text-5xl font-black text-primary/10">{s.step}</div>
+                                <h3 className="text-xl font-semibold">{s.title}</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">{s.description}</p>
+                                {i < steps.length - 1 && (
+                                    <div className="hidden md:block absolute top-8 -right-4 w-8">
+                                        <ArrowRight className="w-5 h-5 text-muted-foreground/30" />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Pricing */}
+            <section id="pricing" className="py-24 bg-muted/30">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="text-center space-y-4 mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold">Simple, transparent pricing</h2>
+                        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                            Start free, upgrade when you need to.
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                        {plans.map((plan) => (
+                            <div
+                                key={plan.name}
+                                className={`relative p-6 rounded-2xl border ${plan.highlighted
+                                        ? 'border-primary bg-card shadow-xl shadow-primary/10 scale-[1.02]'
+                                        : 'border-border bg-card'
+                                    } flex flex-col`}
+                            >
+                                {plan.highlighted && (
+                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                                        Most Popular
+                                    </div>
+                                )}
+                                <div className="mb-6">
+                                    <h3 className="text-lg font-semibold">{plan.name}</h3>
+                                    <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
+                                </div>
+                                <div className="mb-6">
+                                    <span className="text-4xl font-bold">{plan.price}</span>
+                                    <span className="text-muted-foreground">{plan.period}</span>
+                                </div>
+                                <ul className="space-y-3 mb-8 flex-1">
+                                    {plan.features.map((f) => (
+                                        <li key={f} className="flex items-start gap-2 text-sm">
+                                            <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                                            <span>{f}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <Link
+                                    href="/auth/signup"
+                                    className={`inline-flex items-center justify-center h-11 rounded-lg font-medium text-sm transition-colors ${plan.highlighted
+                                            ? 'bg-primary text-primary-foreground hover:opacity-90'
+                                            : 'border border-border hover:bg-muted/50'
+                                        }`}
+                                >
+                                    {plan.cta}
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* CTA */}
+            <section className="py-24">
+                <div className="max-w-3xl mx-auto px-6 text-center space-y-8">
+                    <h2 className="text-3xl md:text-4xl font-bold">Ready to unlock your documents?</h2>
+                    <p className="text-muted-foreground text-lg">
+                        Join Sherlock today and start getting AI-powered answers from your own data — free.
+                    </p>
+                    <Link
+                        href="/auth/signup"
+                        className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium text-base hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
+                    >
+                        Get Started for Free
+                        <ArrowRight className="w-4 h-4" />
+                    </Link>
+                </div>
+            </section>
+
+            {/* Footer */}
+            <footer className="border-t border-border py-12 bg-muted/20">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="bg-primary/10 p-1.5 rounded-lg">
+                                <Sparkles className="w-4 h-4 text-primary" />
+                            </div>
+                            <span className="font-semibold">Sherlock</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            © {new Date().getFullYear()} Sherlock. All rights reserved.
+                        </p>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 }
