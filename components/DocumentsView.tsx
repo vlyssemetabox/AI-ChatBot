@@ -265,7 +265,7 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
                                     </p>
                                 </div>
                             )}
-                            <p className="text-sm text-muted-foreground mb-6">Supports PDF, TXT, DOCX (max 10MB)</p>
+                            <p className="text-sm text-muted-foreground mb-6">Supports PDF, TXT, DOCX, EXCEL (max 10MB)</p>
                             <Button disabled={uploading} variant="secondary">
                                 {uploading ? 'Uploading...' : 'Choose Files'}
                             </Button>
@@ -273,7 +273,7 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
                                 ref={fileInputRef}
                                 type="file"
                                 className="hidden"
-                                accept=".pdf,.txt,.docx"
+                                accept=".pdf,.txt,.docx,.xlsx,.xls"
                                 multiple
                                 onChange={handleFileInput}
                             />

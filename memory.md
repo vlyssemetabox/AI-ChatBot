@@ -53,7 +53,7 @@
 ### 8.4 Migrated Existing Routes
 | Route | Change |
 |-------|--------|
-| `/api/documents` (GET/POST) | Scoped by `orgId`; POST requires Admin+ |
+| `/api/documents` (GET/POST) | Scoped by `orgId`; POST requires Admin+; **Added Excel (.xlsx/.xls) support** |
 | `/api/documents/[id]` (DELETE) | Requires Admin+, verifies org ownership |
 | `/api/settings` (GET/POST) | GET reads org-level; POST requires Super Admin |
 | `/api/usage` (GET) | Aggregates by `orgId`; Admin+ sees per-user breakdown |
@@ -78,11 +78,16 @@
 ### 8.9 Middleware Fix
 - Updated `middleware.ts` matcher to only protect `/dashboard/:path*` and `/api/((?!auth).*)`. Landing page `/` and `/auth/*` are now public for unauthenticated users.
 
-### 8.10 Password Reset Fix
+### 8.11 Password Reset Fix
 - `forgot-password/page.tsx`: Changed `authClient.forgetPassword()` (wrong — OTP namespace) to `authClient.requestPasswordReset({ email, redirectTo })`
 - `reset-password/page.tsx`: Now passes `token` from callback URL to `authClient.resetPassword({ newPassword, token })`
 
-### 8.11 Build Verification
+### 8.12 Excel File Processing & UI Polish
+- **Excel Support**: Added `xlsx` library to parse `.xlsx` and `.xls` files in `documentProcessor.ts`
+- **Frontend Filter**: Updated `DocumentsView.tsx` drop zone to accept Excel files
+- **Branding**: Replaced all `Sparkles` icon logos with `Search` icon globally
+
+### 8.13 Build Verification
 - `npm run build`: ✅ 0 errors, 15 API routes, 10 pages
 
 ---

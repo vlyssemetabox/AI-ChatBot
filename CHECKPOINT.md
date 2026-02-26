@@ -5,7 +5,7 @@ Sherlock is a fully functional multi-tenant SaaS with organization lifecycle man
 ### Build Status
 - ✅ `npm run build` — **0 errors**, 15 API routes, 10 pages
 - ✅ Phases 1–6 and 8 complete
-- ✅ Phase 8.5: Org quit/destroy + middleware fix + password reset fix
+- ✅ Phase 8.5: Org quit/destroy + middleware fix + password reset fix + Excel support + Branding polish
 
 ### What Was Built in Phase 8.5
 
@@ -27,6 +27,10 @@ Sherlock is a fully functional multi-tenant SaaS with organization lifecycle man
 **Password Reset Fix**
 - `forgot-password`: Changed from `authClient.forgetPassword()` → `authClient.requestPasswordReset()`
 - `reset-password`: Now passes URL `token` to `authClient.resetPassword({ newPassword, token })`
+
+**Excel Support & Branding**
+- Added text extraction for `.xlsx` and `.xls` documents via the `xlsx` library and updated frontend drop zone validation
+- Replaced the global `Sparkles` logo with the `Search` icon for better product alignment
 
 ### Access Control Matrix
 | Feature | Normal User | Admin | Super Admin |

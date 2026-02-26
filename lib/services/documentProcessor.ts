@@ -1,5 +1,6 @@
 import pdf from 'pdf-parse-fork';
 import mammoth from 'mammoth';
+import * as xlsx from 'xlsx';
 
 /**
  * Extract text from a PDF buffer
@@ -25,6 +26,26 @@ function extractTextFromTXT(buffer: Buffer): string {
 }
 
 /**
+ * Extract text from an Excel sheet (XLSX/XLS) buffer
+ */
+function extractTextFromExcel(buffer: Buffer): string {
+    const workbook = xlsx.read(buffer, { type: 'buffer' });
+    let text = '';
+
+    // Process each sheet
+    for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        // Convert sheet to CSV string, separating columns by space and rows by newline
+        const csv = xlsx.utils.sheet_to_csv(sheet);
+        if (csv) {
+            text += `\n--- Sheet: ${sheetName} ---\n`;
+            text += csv;
+        }
+    }
+    return text;
+}
+
+/**
  * Process a document and extract text based on file type
  * @param buffer - File buffer
  * @param filename - Original filename
@@ -45,6 +66,10 @@ export async function processDocument(buffer: Buffer, filename: string): Promise
                 break;
             case 'txt':
                 text = extractTextFromTXT(buffer);
+                break;
+            case 'xlsx':
+            case 'xls':
+                text = extractTextFromExcel(buffer);
                 break;
             default:
                 throw new Error(`Unsupported file type: ${ext}`);

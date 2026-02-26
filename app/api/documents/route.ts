@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Validate file type
-        const allowedTypes = ['.pdf', '.txt', '.docx'];
+        const allowedTypes = ['.pdf', '.txt', '.docx', '.xlsx', '.xls'];
         const ext = '.' + file.name.toLowerCase().split('.').pop();
         if (!allowedTypes.includes(ext)) {
             return Response.json(
