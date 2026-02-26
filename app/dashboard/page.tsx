@@ -214,18 +214,16 @@ export default function DashboardPage() {
                             </Button>
                         )}
 
-                        {/* Members tab — visible to Admin+ */}
-                        {isAdmin && (
-                            <Button
-                                variant={currentView === 'members' ? 'default' : 'ghost'}
-                                size="sm"
-                                onClick={() => setCurrentView('members')}
-                                className="gap-2 transition-all"
-                            >
-                                <Users className="w-4 h-4" />
-                                <span className="hidden sm:inline">Team</span>
-                            </Button>
-                        )}
+                        {/* Members tab — visible to all members (actions restricted inside) */}
+                        <Button
+                            variant={currentView === 'members' ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setCurrentView('members')}
+                            className="gap-2 transition-all"
+                        >
+                            <Users className="w-4 h-4" />
+                            <span className="hidden sm:inline">Team</span>
+                        </Button>
 
                         <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
 
@@ -272,13 +270,11 @@ export default function DashboardPage() {
                         {isSuperAdmin && <SettingsView isActive={currentView === 'settings'} />}
                     </div>
                     <div className={currentView === 'members' ? 'block h-full overflow-auto p-4 md:p-6 max-w-4xl mx-auto w-full' : 'hidden'}>
-                        {isAdmin && (
-                            <OrgMembersView
-                                role={role || 'user'}
-                                orgCode={isSuperAdmin ? orgData.organization?.orgCode : undefined}
-                                orgName={orgData.organization?.name}
-                            />
-                        )}
+                        <OrgMembersView
+                            role={role || 'user'}
+                            orgCode={isSuperAdmin ? orgData.organization?.orgCode : undefined}
+                            orgName={orgData.organization?.name}
+                        />
                     </div>
                 </div>
             </main>

@@ -10,12 +10,12 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/organizations/members
- * List all members of the current user's organization (Admin+ only)
+ * List all members of the current user's organization (Accessible by all members)
  */
 export async function GET() {
     try {
         const userId = await getUserId();
-        const { orgId } = await requireRole(userId, ROLES.ADMIN);
+        const { orgId } = await requireRole(userId, ROLES.USER);
 
         const members = await db
             .select({
