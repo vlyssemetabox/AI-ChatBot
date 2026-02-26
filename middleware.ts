@@ -7,13 +7,12 @@ export default neonAuthMiddleware({
 export const config = {
     matcher: [
         /*
-         * Match all paths except:
-         * - / (landing page)
-         * - /auth/* (login/signup)
-         * - /api/auth/* (auth API handlers)
-         * - /_next/* (Next.js internals)
-         * - Static files (favicon, images, etc.)
+         * Only protect:
+         * - /dashboard (and sub-routes)
+         * - /api/* (except /api/auth/* which is handled by Neon Auth)
+         * Public by exclusion: /, /auth/*, static files
          */
-        '/((?!_next/static|_next/image|favicon.ico|api/auth|auth).*)',
+        '/dashboard/:path*',
+        '/api/((?!auth).*)',
     ],
 };

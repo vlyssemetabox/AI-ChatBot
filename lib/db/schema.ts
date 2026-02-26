@@ -8,6 +8,7 @@ import {
     vector,
     index,
     varchar,
+    uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -69,17 +70,50 @@ export const verifications = pgTable('verification', {
 // Application tables — managed by us via Drizzle
 // ============================================================
 
-// Documents uploaded by users
-export const documents = pgTable('documents', {
+// Organizations
+export const organizations = pgTable('organizations', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: text('user_id').notNull(),
-    filename: text('filename').notNull(),
-    blobUrl: text('blob_url'),
-    uploadDate: timestamp('upload_date').defaultNow().notNull(),
-    size: integer('size').default(0),
-    chunks: integer('chunks').default(0),
-    textLength: integer('text_length').default(0),
+    name: text('name').notNull(),
+    orgCode: varchar('org_code', { length: 12 }).notNull().unique(),
+    createdBy: text('created_by').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// Organization members (junction table with role)
+export const orgMembers = pgTable(
+    'org_members',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        orgId: uuid('org_id')
+            .notNull()
+            .references(() => organizations.id, { onDelete: 'cascade' }),
+        userId: text('user_id').notNull(),
+        role: varchar('role', { length: 20 }).notNull().default('user'), // 'super_admin' | 'admin' | 'user'
+        joinedAt: timestamp('joined_at').defaultNow().notNull(),
+    },
+    (table) => [
+        uniqueIndex('idx_org_members_unique').on(table.orgId, table.userId),
+        index('idx_org_members_user').on(table.userId),
+    ]
+);
+
+// Documents uploaded by users
+export const documents = pgTable(
+    'documents',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        userId: text('user_id').notNull(),
+        orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
+        filename: text('filename').notNull(),
+        blobUrl: text('blob_url'),
+        uploadDate: timestamp('upload_date').defaultNow().notNull(),
+        size: integer('size').default(0),
+        chunks: integer('chunks').default(0),
+        textLength: integer('text_length').default(0),
+    },
+    (table) => [index('idx_documents_org').on(table.orgId)]
+);
 
 // Document embeddings for vector search
 export const documentEmbeddings = pgTable(
@@ -87,6 +121,7 @@ export const documentEmbeddings = pgTable(
     {
         id: uuid('id').primaryKey().defaultRandom(),
         userId: text('user_id').notNull(),
+        orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
         documentId: uuid('document_id')
             .notNull()
             .references(() => documents.id, { onDelete: 'cascade' }),
@@ -97,6 +132,7 @@ export const documentEmbeddings = pgTable(
     },
     (table) => [
         index('idx_embeddings_user').on(table.userId),
+        index('idx_embeddings_org').on(table.orgId),
         index('idx_embeddings_document').on(table.documentId),
     ]
 );
@@ -107,11 +143,15 @@ export const chatbotSettings = pgTable(
     {
         id: uuid('id').primaryKey().defaultRandom(),
         userId: text('user_id').notNull(),
+        orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
         key: varchar('key', { length: 255 }).notNull(),
         value: jsonb('value'),
         updatedAt: timestamp('updated_at').defaultNow().notNull(),
     },
-    (table) => [index('idx_settings_user_key').on(table.userId, table.key)]
+    (table) => [
+        index('idx_settings_user_key').on(table.userId, table.key),
+        index('idx_settings_org').on(table.orgId),
+    ]
 );
 
 // Usage logs for metering
@@ -120,12 +160,16 @@ export const usageLogs = pgTable(
     {
         id: uuid('id').primaryKey().defaultRandom(),
         userId: text('user_id').notNull(),
+        orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
         model: text('model'),
         tokensIn: integer('tokens_in').default(0),
         tokensOut: integer('tokens_out').default(0),
         createdAt: timestamp('created_at').defaultNow().notNull(),
     },
-    (table) => [index('idx_usage_user').on(table.userId)]
+    (table) => [
+        index('idx_usage_user').on(table.userId),
+        index('idx_usage_org').on(table.orgId),
+    ]
 );
 
 // Chat conversations
@@ -171,16 +215,38 @@ export const userPlans = pgTable('user_plans', {
 // Relations
 // ============================================================
 
+export const organizationsRelations = relations(organizations, ({ many, one }) => ({
+    members: many(orgMembers),
+    documents: many(documents),
+    embeddings: many(documentEmbeddings),
+    settings: many(chatbotSettings),
+    usageLogs: many(usageLogs),
+    creator: one(users, { fields: [organizations.createdBy], references: [users.id] }),
+}));
+
+export const orgMembersRelations = relations(orgMembers, ({ one }) => ({
+    organization: one(organizations, {
+        fields: [orgMembers.orgId],
+        references: [organizations.id],
+    }),
+    user: one(users, {
+        fields: [orgMembers.userId],
+        references: [users.id],
+    }),
+}));
+
 export const usersRelations = relations(users, ({ many, one }) => ({
     documents: many(documents),
     conversations: many(conversations),
     usageLogs: many(usageLogs),
     settings: many(chatbotSettings),
     plan: one(userPlans),
+    orgMemberships: many(orgMembers),
 }));
 
 export const documentsRelations = relations(documents, ({ one, many }) => ({
     user: one(users, { fields: [documents.userId], references: [users.id] }),
+    organization: one(organizations, { fields: [documents.orgId], references: [organizations.id] }),
     embeddings: many(documentEmbeddings),
 }));
 
@@ -194,6 +260,10 @@ export const documentEmbeddingsRelations = relations(
         user: one(users, {
             fields: [documentEmbeddings.userId],
             references: [users.id],
+        }),
+        organization: one(organizations, {
+            fields: [documentEmbeddings.orgId],
+            references: [organizations.id],
         }),
     })
 );

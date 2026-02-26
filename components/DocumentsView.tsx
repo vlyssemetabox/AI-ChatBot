@@ -26,7 +26,7 @@ interface Document {
     text_length: number;
 }
 
-export function DocumentsView() {
+export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
     const [documents, setDocuments] = useState<Document[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -234,50 +234,52 @@ export function DocumentsView() {
                     <p className="text-muted-foreground max-w-lg mx-auto">Upload documents (PDF, TXT, DOCX) to power your AI assistant with custom knowledge.</p>
                 </div>
 
-                <Card
-                    className={cn(
-                        "border-2 border-dashed transition-all cursor-pointer relative overflow-hidden",
-                        isDragging ? "border-primary bg-primary/5 scale-[1.01]" : "border-border hover:border-primary/50 hover:bg-muted/50"
-                    )}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={handleFileClick}
-                >
-                    <CardContent className="flex flex-col items-center justify-center py-12 md:py-16">
-                        <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            {uploading ? (
-                                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                            ) : (
-                                <Upload className="w-8 h-8 text-primary" />
-                            )}
-                        </div>
-                        <p className="text-lg font-medium mb-2">
-                            {uploading ? 'Processing documents...' : 'Drop files here or click to browse'}
-                        </p>
-                        {uploading && currentFile && (
-                            <div className="w-full max-w-xs space-y-2 mb-4">
-                                <Progress value={uploadProgress} className="h-2" />
-                                <p className="text-xs text-muted-foreground truncate">
-                                    Uploading {currentFile} ({Math.round(uploadProgress)}%)
-                                    <span className="block mt-1 opacity-75">File {uploading && currentFile ? (Math.floor((uploadProgress / 100) * (totalUploads || 1)) + 1) : 0} of {totalUploads}</span>
-                                </p>
-                            </div>
+                {canManage && (
+                    <Card
+                        className={cn(
+                            "border-2 border-dashed transition-all cursor-pointer relative overflow-hidden",
+                            isDragging ? "border-primary bg-primary/5 scale-[1.01]" : "border-border hover:border-primary/50 hover:bg-muted/50"
                         )}
-                        <p className="text-sm text-muted-foreground mb-6">Supports PDF, TXT, DOCX (max 10MB)</p>
-                        <Button disabled={uploading} variant="secondary">
-                            {uploading ? 'Uploading...' : 'Choose Files'}
-                        </Button>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            className="hidden"
-                            accept=".pdf,.txt,.docx"
-                            multiple
-                            onChange={handleFileInput}
-                        />
-                    </CardContent>
-                </Card>
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={handleFileClick}
+                    >
+                        <CardContent className="flex flex-col items-center justify-center py-12 md:py-16">
+                            <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                {uploading ? (
+                                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                                ) : (
+                                    <Upload className="w-8 h-8 text-primary" />
+                                )}
+                            </div>
+                            <p className="text-lg font-medium mb-2">
+                                {uploading ? 'Processing documents...' : 'Drop files here or click to browse'}
+                            </p>
+                            {uploading && currentFile && (
+                                <div className="w-full max-w-xs space-y-2 mb-4">
+                                    <Progress value={uploadProgress} className="h-2" />
+                                    <p className="text-xs text-muted-foreground truncate">
+                                        Uploading {currentFile} ({Math.round(uploadProgress)}%)
+                                        <span className="block mt-1 opacity-75">File {uploading && currentFile ? (Math.floor((uploadProgress / 100) * (totalUploads || 1)) + 1) : 0} of {totalUploads}</span>
+                                    </p>
+                                </div>
+                            )}
+                            <p className="text-sm text-muted-foreground mb-6">Supports PDF, TXT, DOCX (max 10MB)</p>
+                            <Button disabled={uploading} variant="secondary">
+                                {uploading ? 'Uploading...' : 'Choose Files'}
+                            </Button>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.txt,.docx"
+                                multiple
+                                onChange={handleFileInput}
+                            />
+                        </CardContent>
+                    </Card>
+                )}
 
                 {error && (
                     <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md flex items-center gap-2">
@@ -289,12 +291,14 @@ export function DocumentsView() {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <Checkbox
-                                id="select-all"
-                                checked={documents.length > 0 && selectedDocs.size === documents.length}
-                                onCheckedChange={toggleSelectAll}
-                                disabled={documents.length === 0}
-                            />
+                            {canManage && (
+                                <Checkbox
+                                    id="select-all"
+                                    checked={documents.length > 0 && selectedDocs.size === documents.length}
+                                    onCheckedChange={toggleSelectAll}
+                                    disabled={documents.length === 0}
+                                />
+                            )}
                             <div className="flex gap-2 items-center">
                                 <h2 className="text-xl font-semibold tracking-tight">
                                     Uploaded Documents
@@ -302,7 +306,7 @@ export function DocumentsView() {
                                 <span className="text-muted-foreground text-sm font-normal">({documents.length})</span>
                             </div>
                         </div>
-                        {selectedDocs.size > 0 && (
+                        {canManage && selectedDocs.size > 0 && (
                             <Button
                                 variant="destructive"
                                 size="sm"
@@ -325,13 +329,15 @@ export function DocumentsView() {
                                 <Card key={doc.id} className="group hover:shadow-md transition-all border-muted hover:border-border">
                                     <CardContent className="p-4">
                                         <div className="flex items-start gap-3">
-                                            <div className="pt-3">
-                                                <Checkbox
-                                                    checked={selectedDocs.has(doc.id)}
-                                                    onCheckedChange={() => toggleSelection(doc.id)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
-                                            </div>
+                                            {canManage && (
+                                                <div className="pt-3">
+                                                    <Checkbox
+                                                        checked={selectedDocs.has(doc.id)}
+                                                        onCheckedChange={() => toggleSelection(doc.id)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                </div>
+                                            )}
                                             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                                                 <FileText className="w-5 h-5 text-primary" />
                                             </div>
@@ -346,22 +352,24 @@ export function DocumentsView() {
                                                     {new Date(doc.upload_date).toLocaleDateString()}
                                                 </p>
                                             </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setDocsToDelete([doc.id]);
-                                                }}
-                                                disabled={deletingId === doc.id}
-                                            >
-                                                {deletingId === doc.id ? (
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                ) : (
-                                                    <Trash2 className="w-4 h-4" />
-                                                )}
-                                            </Button>
+                                            {canManage && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDocsToDelete([doc.id]);
+                                                    }}
+                                                    disabled={deletingId === doc.id}
+                                                >
+                                                    {deletingId === doc.id ? (
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="w-4 h-4" />
+                                                    )}
+                                                </Button>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>

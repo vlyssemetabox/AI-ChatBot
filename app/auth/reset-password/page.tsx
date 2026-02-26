@@ -24,9 +24,10 @@ function ResetPasswordForm() {
         setIsLoading(true);
 
         try {
-            // Neon/Better Auth reset implementation
+            // Neon/Better Auth reset — token comes from the email callback URL
             const result = await authClient.resetPassword({
                 newPassword: password,
+                token: token ?? undefined,
             });
 
             if (result.error) {

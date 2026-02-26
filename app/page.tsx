@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Sparkles, FileSearch, Shield, MessageSquare, Upload, Brain, Zap, ArrowRight, ChevronRight, Check } from 'lucide-react';
+import { Sparkles, FileSearch, Shield, MessageSquare, Upload, Brain, Zap, ArrowRight, ChevronRight, Users, Building2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 const features = [
@@ -9,9 +9,14 @@ const features = [
         description: 'Upload your documents and ask questions in natural language. Sherlock finds the answers instantly using advanced RAG.',
     },
     {
+        icon: Building2,
+        title: 'Team Organizations',
+        description: 'Create or join an organization with a simple invite code. Share documents and knowledge across your entire team.',
+    },
+    {
         icon: Shield,
-        title: 'AI Guardrails',
-        description: 'Built-in safeguards ensure responses stay on-topic and within your document knowledge base. No hallucinations.',
+        title: 'Role-Based Access',
+        description: 'Super Admin, Admin, and User roles control who can upload documents, change settings, and manage team members.',
     },
     {
         icon: MessageSquare,
@@ -19,14 +24,9 @@ const features = [
         description: 'All your conversations are saved and searchable. Pick up right where you left off, every time.',
     },
     {
-        icon: Upload,
-        title: 'Multi-Format Upload',
-        description: 'Supports PDF, DOCX, TXT and more. Drop your files and Sherlock handles the rest — chunking, embedding, indexing.',
-    },
-    {
-        icon: Brain,
-        title: 'Contextual Understanding',
-        description: 'Powered by vector similarity search and LLM reasoning for deep, nuanced answers with source citations.',
+        icon: Users,
+        title: 'Team Management',
+        description: 'Invite members, promote admins, and manage your team\'s access — all from a simple dashboard.',
     },
     {
         icon: Zap,
@@ -36,40 +36,11 @@ const features = [
 ];
 
 const steps = [
-    { step: '01', title: 'Upload Documents', description: 'Drop your PDFs, docs, or text files into Sherlock.' },
-    { step: '02', title: 'Ask Questions', description: 'Type your question in natural language — Sherlock understands context.' },
-    { step: '03', title: 'Get Cited Answers', description: 'Receive accurate answers with direct source references from your docs.' },
+    { step: '01', title: 'Create Your Org', description: 'Set up your organization in seconds and invite your team with a private code.' },
+    { step: '02', title: 'Upload Documents', description: 'Admins upload PDFs, docs, or text files — shared across the whole team instantly.' },
+    { step: '03', title: 'Ask & Get Answers', description: 'Everyone in the org can chat and get cited answers from the shared knowledge base.' },
 ];
 
-const plans = [
-    {
-        name: 'Free',
-        price: '$0',
-        period: '/month',
-        description: 'Perfect for trying Sherlock out',
-        features: ['5 documents', '50 queries/day', 'Basic RAG search', 'Chat history'],
-        cta: 'Get Started',
-        highlighted: false,
-    },
-    {
-        name: 'Pro',
-        price: '$19',
-        period: '/month',
-        description: 'For professionals and small teams',
-        features: ['Unlimited documents', 'Unlimited queries', 'Advanced RAG + reranking', 'Priority support', 'API access'],
-        cta: 'Start Free Trial',
-        highlighted: true,
-    },
-    {
-        name: 'Enterprise',
-        price: 'Custom',
-        period: '',
-        description: 'For organizations at scale',
-        features: ['Everything in Pro', 'SSO & SAML', 'Custom AI guardrails', 'On-premise deployment', 'Dedicated support'],
-        cta: 'Contact Sales',
-        highlighted: false,
-    },
-];
 
 export default function LandingPage() {
     return (
@@ -86,7 +57,6 @@ export default function LandingPage() {
                     <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
                         <a href="#features" className="hover:text-foreground transition-colors">Features</a>
                         <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
-                        <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
                     </div>
                     <div className="flex items-center gap-3">
                         <ThemeToggle />
@@ -131,8 +101,8 @@ export default function LandingPage() {
                         </h1>
 
                         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                            Sherlock is an AI-powered assistant that reads your documents and answers your questions
-                            with source citations. Upload, ask, and get accurate answers in seconds.
+                            Sherlock is an AI-powered assistant for teams. Upload documents, share knowledge across your organization,
+                            and get accurate answers with source citations — powered by role-based access control.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -209,67 +179,13 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Pricing */}
-            <section id="pricing" className="py-24 bg-muted/30">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="text-center space-y-4 mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold">Simple, transparent pricing</h2>
-                        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                            Start free, upgrade when you need to.
-                        </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                        {plans.map((plan) => (
-                            <div
-                                key={plan.name}
-                                className={`relative p-6 rounded-2xl border ${plan.highlighted
-                                        ? 'border-primary bg-card shadow-xl shadow-primary/10 scale-[1.02]'
-                                        : 'border-border bg-card'
-                                    } flex flex-col`}
-                            >
-                                {plan.highlighted && (
-                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-medium">
-                                        Most Popular
-                                    </div>
-                                )}
-                                <div className="mb-6">
-                                    <h3 className="text-lg font-semibold">{plan.name}</h3>
-                                    <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
-                                </div>
-                                <div className="mb-6">
-                                    <span className="text-4xl font-bold">{plan.price}</span>
-                                    <span className="text-muted-foreground">{plan.period}</span>
-                                </div>
-                                <ul className="space-y-3 mb-8 flex-1">
-                                    {plan.features.map((f) => (
-                                        <li key={f} className="flex items-start gap-2 text-sm">
-                                            <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                                            <span>{f}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                <Link
-                                    href="/auth/signup"
-                                    className={`inline-flex items-center justify-center h-11 rounded-lg font-medium text-sm transition-colors ${plan.highlighted
-                                            ? 'bg-primary text-primary-foreground hover:opacity-90'
-                                            : 'border border-border hover:bg-muted/50'
-                                        }`}
-                                >
-                                    {plan.cta}
-                                </Link>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
 
             {/* CTA */}
             <section className="py-24">
                 <div className="max-w-3xl mx-auto px-6 text-center space-y-8">
                     <h2 className="text-3xl md:text-4xl font-bold">Ready to unlock your documents?</h2>
                     <p className="text-muted-foreground text-lg">
-                        Join Sherlock today and start getting AI-powered answers from your own data — free.
+                        Create your organization, invite your team, and start getting AI-powered answers from your shared documents — free.
                     </p>
                     <Link
                         href="/auth/signup"

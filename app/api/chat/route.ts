@@ -2,9 +2,9 @@ import { NextRequest } from 'next/server';
 import { searchSimilarDocuments } from '@/lib/services/vectorStore';
 import { generateStreamingCompletion, Message } from '@/lib/services/cerebrasClient';
 import { db } from '@/lib/db/neon';
-import { chatbotSettings, usageLogs } from '@/lib/db/schema';
+import { chatbotSettings, usageLogs, conversations, messages } from '@/lib/db/schema';
 import { eq, inArray, and } from 'drizzle-orm';
-import { getUserId } from '@/lib/auth/utils';
+import { getUserOrgContext } from '@/lib/auth/utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,8 +15,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
     try {
-        const userId = await getUserId();
-        const { message, conversationHistory = [] } = await req.json();
+        const { userId, orgId } = await getUserOrgContext();
+        let { message, conversationHistory = [], conversationId } = await req.json();
 
         if (!message) {
             return Response.json({ error: 'Message is required' }, { status: 400 });
@@ -24,15 +24,41 @@ export async function POST(req: NextRequest) {
 
         console.log(`💬 Query: ${message}`);
 
+        // Create or update conversation
+        if (!conversationId) {
+            const title = message.length > 40 ? message.substring(0, 40) + '...' : message;
+            const [newConv] = await db.insert(conversations).values({
+                userId,
+                title,
+            }).returning();
+            conversationId = newConv.id;
+        } else {
+            await db.update(conversations)
+                .set({ updatedAt: new Date() })
+                .where(and(eq(conversations.id, conversationId), eq(conversations.userId, userId)));
+        }
+
+        // Insert user message
+        await db.insert(messages).values({
+            conversationId,
+            role: 'user',
+            content: message,
+        });
+
         // 1. Fetch settings from Neon via Drizzle (FAILSAFE)
         let settings: any = {};
         try {
+            // Fetch org-level settings if user has an org
+            const settingsFilter = orgId
+                ? eq(chatbotSettings.orgId, orgId)
+                : eq(chatbotSettings.userId, userId);
+
             const rows = await db
                 .select({ key: chatbotSettings.key, value: chatbotSettings.value })
                 .from(chatbotSettings)
                 .where(
                     and(
-                        eq(chatbotSettings.userId, userId),
+                        settingsFilter,
                         inArray(chatbotSettings.key, ['guardrails', 'model_config'])
                     )
                 );
@@ -68,12 +94,13 @@ export async function POST(req: NextRequest) {
 
         settings = { ...defaultSettings, ...settings };
 
-        // 2. Search for relevant documents
+        // 2. Search for relevant documents (org-scoped if user has an org)
+        const searchScope = orgId || userId;
         const searchQuery = message.toLowerCase().includes('zoho')
             ? message
             : `${message} Zoho Books`;
 
-        const relevantDocs = await searchSimilarDocuments(userId, searchQuery, 10);
+        const relevantDocs = await searchSimilarDocuments(searchScope, searchQuery, 10);
 
         // 3. Build context from retrieved documents
         let context = '';
@@ -105,7 +132,7 @@ export async function POST(req: NextRequest) {
             content: finalSystemPrompt,
         };
 
-        const messages: Message[] = [
+        const chatMessages: Message[] = [
             systemMessage,
             ...conversationHistory,
             {
@@ -119,19 +146,29 @@ export async function POST(req: NextRequest) {
         const stream = new ReadableStream({
             async start(controller) {
                 let tokensOut = 0;
-                const tokensIn = Math.ceil(JSON.stringify(messages).length / 4);
+                const tokensIn = Math.ceil(JSON.stringify(chatMessages).length / 4);
 
                 try {
-                    const model =
-                        (settings.model_config as any)?.model || 'llama-3.3-70b';
+                    let model =
+                        (settings.model_config as any)?.model || 'llama3.1-8b';
+
+                    // Auto-upgrade deprecated model IDs
+                    if (model === 'llama-3.3-70b' || model === 'llama3.1-70b') {
+                        model = 'llama3.1-8b';
+                    }
+
                     console.log(`🤖 Model: ${model}`);
 
-                    const aiStream = await generateStreamingCompletion(messages, model);
+                    const aiStream = await generateStreamingCompletion(chatMessages, model);
 
                     let isThinking = false;
                     let internalBuffer = '';
+                    let fullAssistantResponse = '';
                     const THINK_START = '<think>';
                     const THINK_END = '</think>';
+
+                    // Send conversation ID to frontend right away
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ conversationId })}\n\n`));
 
                     for await (const chunk of aiStream) {
                         const content = chunk.choices[0]?.delta?.content || '';
@@ -165,6 +202,7 @@ export async function POST(req: NextRequest) {
                                                 0,
                                                 startIdx
                                             );
+                                            fullAssistantResponse += validContent;
                                             const data = JSON.stringify({
                                                 content: validContent,
                                             });
@@ -184,6 +222,7 @@ export async function POST(req: NextRequest) {
                                                 internalBuffer.length - keepLen;
                                             const validContent =
                                                 internalBuffer.substring(0, emitLen);
+                                            fullAssistantResponse += validContent;
                                             const data = JSON.stringify({
                                                 content: validContent,
                                             });
@@ -202,6 +241,7 @@ export async function POST(req: NextRequest) {
 
                     // Flush remaining buffer
                     if (internalBuffer && !isThinking) {
+                        fullAssistantResponse += internalBuffer;
                         const data = JSON.stringify({ content: internalBuffer });
                         controller.enqueue(encoder.encode(`data: ${data}\n\n`));
                     }
@@ -219,16 +259,29 @@ export async function POST(req: NextRequest) {
                     }
 
                     // Send sources
+                    let sourcesArray: any[] = [];
                     if (relevantDocs.length > 0) {
-                        const sources = relevantDocs.map((doc, idx) => ({
+                        sourcesArray = relevantDocs.map((doc, idx) => ({
                             index: idx + 1,
                             filename: doc.metadata?.filename || 'Unknown',
                             chunkIndex: doc.metadata?.chunkIndex,
                         }));
-                        const sourcesData = JSON.stringify({ sources });
+                        const sourcesData = JSON.stringify({ sources: sourcesArray });
                         controller.enqueue(
                             encoder.encode(`data: ${sourcesData}\n\n`)
                         );
+                    }
+
+                    // Persist assistant message
+                    try {
+                        await db.insert(messages).values({
+                            conversationId,
+                            role: 'assistant',
+                            content: fullAssistantResponse,
+                            sources: sourcesArray.length > 0 ? sourcesArray : null,
+                        });
+                    } catch (msgErr) {
+                        console.error('Failed to log assistant message:', msgErr);
                     }
 
                     controller.enqueue(encoder.encode('data: [DONE]\n\n'));

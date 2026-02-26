@@ -22,14 +22,48 @@ interface ChatViewProps {
     logoUrl?: string;
     logoDarkUrl?: string;
     faqs?: string[];
+    activeConversationId?: string | null;
+    onConversationCreated?: (id: string) => void;
 }
 
-export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, faqs = [] }: ChatViewProps) {
+export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, faqs = [], activeConversationId, onConversationCreated }: ChatViewProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [chatError, setChatError] = useState<string | null>(null);
+    const creatingRef = useRef(false);
+
+    useEffect(() => {
+        if (creatingRef.current) {
+            creatingRef.current = false;
+            return;
+        }
+
+        if (activeConversationId) {
+            setIsLoading(true);
+            fetch(`/api/conversations/${activeConversationId}/messages`)
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        setMessages(data.map((m: any) => ({
+                            role: m.role,
+                            content: m.content,
+                            sources: m.sources
+                        })));
+                    } else {
+                        setMessages([]);
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to load history:', err);
+                    setMessages([]);
+                })
+                .finally(() => setIsLoading(false));
+        } else {
+            setMessages([]);
+        }
+    }, [activeConversationId]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,7 +88,8 @@ export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, f
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: userMessage,
-                    conversationHistory: messages.map(m => ({ role: m.role, content: m.content }))
+                    conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
+                    conversationId: activeConversationId
                 }),
             });
 
@@ -88,6 +123,11 @@ export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, f
                         try {
                             const data = JSON.parse(dataStr);
                             if (data.error) throw new Error(data.error);
+
+                            if (data.conversationId && !activeConversationId && onConversationCreated) {
+                                creatingRef.current = true;
+                                onConversationCreated(data.conversationId);
+                            }
 
                             if (data.content) {
                                 currentResponse += data.content;

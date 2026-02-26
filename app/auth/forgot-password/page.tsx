@@ -18,10 +18,9 @@ export default function ForgotPasswordPage() {
         setIsLoading(true);
 
         try {
-            // @ts-expect-error: Neon Auth / Better Auth proxy type mismatch
-            const result = await authClient.forgetPassword({
+            const result = await authClient.requestPasswordReset({
                 email,
-                redirectTo: '/auth/reset-password',
+                redirectTo: `${window.location.origin}/auth/reset-password`,
             });
 
             if (result.error) {

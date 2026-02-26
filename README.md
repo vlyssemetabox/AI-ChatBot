@@ -1,180 +1,68 @@
-# 🤖 AI ChatBot with RAG
+# Sherlock - AI ChatBot with RAG (SaaS Edition)
 
-A powerful AI chatbot with Retrieval Augmented Generation (RAG) capabilities, featuring document ingestion and intelligent question-answering powered by Cerebras API.
+A production-ready AI chatbot with Retrieval Augmented Generation (RAG) capabilities, featuring persistent chat history, multi-tenancy, and intelligent question-answering powered by Cerebras Inference.
 
 ## ✨ Features
 
-- 📁 **Document Upload**: Drag-and-drop support for PDF, TXT, and DOCX files
-- 🔍 **RAG Pipeline**: Intelligent document retrieval using ChromaDB vector store
-- 💬 **Streaming Chat**: Real-time responses from Cerebras LLM (ultra-fast inference)
-- 📚 **Source Citations**: Automatic citation of document sources in responses
-- 🎨 **Premium UI**: Modern glassmorphism design with dark mode
-- ⚡ **Fast Processing**: Document chunking and embedding generation
+- 📁 **Document Upload**: Powered by Vercel Blob storage with support for PDF, TXT, and DOCX.
+- 💬 **Persistent Chat History**: Full conversation threads saved to Neon PostgreSQL.
+- 🔍 **RAG Pipeline**: Semantic search using `pgvector` for context-aware answers.
+- ⚡ **Ultra-Fast Inference**: Real-time streaming responses from Cerebras Llama 3.1 70B.
+- 🔒 **Secure Auth**: Multi-tenant isolation using Neon Auth (Better Auth).
+- 🎨 **Modern UI**: Built with Next.js 15, Tailwind CSS, and Shadcn/ui.
 
-## 🚀 Quick Start
+## 🚀 Tech Stack
 
-### Prerequisites
+- **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+- **AI Model**: [Cerebras Llama 3.1 8B](https://cerebras.ai/)
+- **Database**: [Neon PostgreSQL](https://neon.tech/) (Serverless)
+- **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
+- **Auth**: [Neon Auth](https://neon.tech/docs/auth/introduction)
+- **Storage**: [Vercel Blob](https://vercel.com/storage/blob)
+- **Styling**: Tailwind CSS + Shadcn UI
 
-- Node.js 18+ installed
-- Cerebras API key (free tier available at [cerebras.ai](https://cerebras.ai))
-- Optional: OpenAI API key for embeddings (can use Cerebras key as fallback)
+## 🛠️ Configuration
 
-### Installation
+Edit your `.env` file with the following keys:
 
-1. **Clone or navigate to the project directory**
-   ```bash
-   cd "c:\dev\AI ChatBot"
-   ```
+```env
+# Cerebras AI
+CEREBRAS_API_KEY=your_key_here
 
-2. **Install dependencies** (already done if you followed setup)
+# Neon Database & Auth
+DATABASE_URL=your_neon_url_here
+BETTER_AUTH_SECRET=your_secret_here
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Vercel Blob
+BLOB_READ_WRITE_TOKEN=your_token_here
+```
+
+## 🏗️ Getting Started
+
+1. **Install dependencies**:
    ```bash
    npm install
    ```
 
-3. **Configure environment variables**
-   
-   Edit the `.env` file and add your API keys:
-   ```env
-   CEREBRAS_API_KEY=your_cerebras_api_key_here
-   OPENAI_API_KEY=your_openai_api_key_here  # Optional, for embeddings
-   PORT=3001
-   UPLOAD_DIR=./uploads
-   CHROMA_PATH=./chroma_db
+2. **Run migrations**:
+   ```bash
+   npx drizzle-kit push
    ```
 
-### Running the Application
-
-**Start both frontend and backend:**
-```bash
-npm run dev:all
-```
-
-This will start:
-- Frontend (Vite): http://localhost:5173
-- Backend (Express): http://localhost:3001
-
-**Or run separately:**
-```bash
-# Terminal 1 - Frontend
-npm run dev
-
-# Terminal 2 - Backend
-npm run server
-```
+3. **Start development server**:
+   ```bash
+   npm run dev
+   ```
 
 ## 📖 Usage
 
-1. **Upload Documents**
-   - Navigate to the "Documents" tab
-   - Drag and drop files or click to browse
-   - Supported formats: PDF, TXT, DOCX (max 10MB)
-   - Documents are automatically processed and indexed
+1. **Sign Up / Login**: Access the dashboard via the secure auth flow.
+2. **Knowledge Base**: Upload documents in the Settings tab to index them for RAG.
+3. **Chat**: Start new conversations or resume historical ones via the sidebar.
 
-2. **Chat with AI**
-   - Switch to the "Chat" tab
-   - Ask questions about your uploaded documents
-   - The AI will retrieve relevant information and cite sources
-   - Responses stream in real-time
+## 🔑 AI Model Info
+The application currently uses `llama3.1-8b` as the primary model. If you have legacy settings pointing to `llama-3.3-70b` or `llama3.1-70b` (now deprecated), the system will automatically upgrade them to the stable `llama3.1-8b` version.
 
-## 🏗️ Architecture
-
-```
-Frontend (React + Vite)
-    ↓
-Backend API (Express)
-    ↓
-├── Document Processor (PDF/DOCX/TXT extraction)
-├── Vector Store (ChromaDB + OpenAI embeddings)
-└── LLM Client (Cerebras API)
-```
-
-### Tech Stack
-
-- **Frontend**: React, Vite, CSS (Glassmorphism)
-- **Backend**: Node.js, Express
-- **Vector DB**: ChromaDB (local)
-- **LLM**: Cerebras API (Llama 3.3 70B)
-- **Embeddings**: OpenAI text-embedding-3-small
-- **Document Processing**: pdf-parse, mammoth
-
-## 📁 Project Structure
-
-```
-AI ChatBot/
-├── src/                      # Frontend source
-│   ├── components/
-│   │   ├── DocumentUpload.jsx
-│   │   ├── DocumentUpload.css
-│   │   ├── ChatInterface.jsx
-│   │   └── ChatInterface.css
-│   ├── App.jsx
-│   └── index.css
-├── server/                   # Backend source
-│   ├── routes/
-│   │   ├── documents.js      # Upload/delete endpoints
-│   │   └── chat.js           # Chat endpoint
-│   ├── services/
-│   │   ├── cerebrasClient.js # LLM integration
-│   │   ├── vectorStore.js    # ChromaDB integration
-│   │   └── documentProcessor.js
-│   └── index.js              # Express server
-├── uploads/                  # Uploaded documents
-├── chroma_db/               # Vector database
-├── .env                     # Environment variables
-└── package.json
-```
-
-## 🔑 API Endpoints
-
-### Documents
-- `POST /api/documents/upload` - Upload a document
-- `GET /api/documents` - List all documents
-- `DELETE /api/documents/:id` - Delete a document
-
-### Chat
-- `POST /api/chat` - Send a chat message (streaming response)
-
-## 🎨 UI Features
-
-- **Glassmorphism Design**: Modern frosted glass effect
-- **Dark Mode**: Eye-friendly dark theme
-- **Smooth Animations**: Micro-interactions and transitions
-- **Responsive Layout**: Works on desktop and mobile
-- **Drag & Drop**: Intuitive file upload
-- **Real-time Streaming**: See responses as they're generated
-
-## 🔧 Configuration
-
-### Embedding Model
-By default, the app uses OpenAI's `text-embedding-3-small` model. To use a different embedding provider, modify `server/services/vectorStore.js`.
-
-### LLM Model
-The app uses Cerebras' `llama-3.3-70b` model. To change models, edit `server/services/cerebrasClient.js`.
-
-### Chunk Size
-Document chunking is set to 1000 characters with 200 character overlap. Adjust in `server/services/documentProcessor.js`.
-
-## 🐛 Troubleshooting
-
-**ChromaDB Connection Issues:**
-- Ensure ChromaDB is properly installed: `npm install chromadb`
-- Check that the `CHROMA_PATH` directory is writable
-
-**API Key Errors:**
-- Verify your Cerebras API key is correct in `.env`
-- Check that the `.env` file is in the project root
-
-**File Upload Fails:**
-- Check file size (max 10MB)
-- Ensure file format is supported (PDF, TXT, DOCX)
-- Verify the `UPLOAD_DIR` exists and is writable
-
-## 📝 License
-
-MIT License - feel free to use this project for your own purposes!
-
-## 🙏 Acknowledgments
-
-- Cerebras for ultra-fast LLM inference
-- ChromaDB for vector storage
-- OpenAI for embedding models
+---
+Built with ❤️ using Cerebras and Neon.

@@ -44,15 +44,15 @@ const DEFAULT_SETTINGS: SettingsState = {
     },
     faqs: [],
     model_config: {
-        model: "llama-3.3-70b"
+        model: "llama3.1-8b"
     }
 };
 
 const AVAILABLE_MODELS = [
-    { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', desc: 'Production - Balanced Performance' },
-    { id: 'llama3.1-8b', name: 'Llama 3.1 8B', desc: 'Production - Fast & Lightweight' },
-    { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', desc: 'Production - High Capability' },
-    { id: 'qwen-3-32b', name: 'Qwen 3 32B', desc: 'Production - Multilingual' },
+    { id: 'llama3.1-8b', name: 'Llama 3.1 8B', desc: 'Production - Ultra Fast' },
+    { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', desc: 'Production - Large Scale Capability' },
+    { id: 'qwen-3-235b-a22b-instruct-2507', name: 'Qwen 3 235B', desc: 'Preview - High Reasoning' },
+    { id: 'zai-glm-4.7', name: 'Z.ai GLM 4.7', desc: 'Preview - Experimental' },
 ];
 
 interface UsageStats {

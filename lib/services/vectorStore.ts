@@ -95,9 +95,10 @@ async function generateEmbedding(text: string): Promise<number[]> {
 
 /**
  * Add document chunks to the vector store (Neon pgvector via Drizzle)
+ * scopeId = orgId (preferred) or userId for legacy data
  */
 export async function addDocumentToVectorStore(
-    userId: string,
+    scopeId: string,
     documentId: string,
     chunks: string[],
     metadata: Partial<DocumentMetadata> = {}
@@ -108,7 +109,8 @@ export async function addDocumentToVectorStore(
         const embedding = await generateEmbedding(chunks[i]);
 
         await db.insert(documentEmbeddings).values({
-            userId,
+            userId: scopeId,
+            orgId: scopeId,
             documentId,
             chunkIndex: i,
             content: chunks[i],
@@ -130,9 +132,10 @@ export async function addDocumentToVectorStore(
 
 /**
  * Search for similar documents using Neon pgvector
+ * scopeId = orgId (preferred) or userId for legacy data
  */
 export async function searchSimilarDocuments(
-    userId: string,
+    scopeId: string,
     query: string,
     topK = 10
 ): Promise<SearchResult[]> {
@@ -146,6 +149,7 @@ export async function searchSimilarDocuments(
     // Use raw SQL for pgvector cosine similarity search
     const embeddingStr = `[${queryEmbedding.join(',')}]`;
 
+    // Search by org_id first, fall back to user_id for legacy data
     const results = await db.execute(sql`
         SELECT
             de.content,
@@ -153,7 +157,7 @@ export async function searchSimilarDocuments(
             1 - (de.embedding <=> ${embeddingStr}::vector) AS similarity
         FROM document_embeddings de
         WHERE de.embedding IS NOT NULL
-          AND de.user_id = ${userId}
+          AND (de.org_id = ${scopeId}::uuid OR de.user_id = ${scopeId})
         ORDER BY de.embedding <=> ${embeddingStr}::vector
         LIMIT ${topK}
     `);
@@ -170,16 +174,16 @@ export async function searchSimilarDocuments(
 
 /**
  * Delete a document from the vector store
+ * scopeId = orgId (preferred) or userId for legacy data
  */
 export async function deleteDocumentFromVectorStore(
-    userId: string,
+    scopeId: string,
     documentId: string
 ): Promise<{ success: boolean; chunksDeleted: number }> {
     const deleted = await db
         .delete(documentEmbeddings)
         .where(
             and(
-                eq(documentEmbeddings.userId, userId),
                 eq(documentEmbeddings.documentId, documentId)
             )
         )

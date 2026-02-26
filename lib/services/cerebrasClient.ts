@@ -16,7 +16,7 @@ export interface Message {
  * @param messages - Array of message objects
  * @returns Streaming response
  */
-export async function generateStreamingCompletion(messages: Message[], model: string = 'llama-3.3-70b') {
+export async function generateStreamingCompletion(messages: Message[], model: string = 'llama3.1-8b') {
     try {
         const stream = await cerebras.chat.completions.create({
             model,

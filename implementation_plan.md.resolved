@@ -1,0 +1,233 @@
+# Phase 8: Organization Multi-Tenancy — Implementation Plan
+
+## Goal
+Introduce organization-level multi-tenancy with RBAC (Super Admin / Admin / Normal User), org-code join flow, and org-scoped data isolation—without rewriting the existing project.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Breaking Change**: After this phase, documents and embeddings will be queried by `orgId` instead of `userId`. Existing users without documents will need to create or join an organization before uploading.
+
+> [!WARNING]
+> **Data Migration**: A one-time migration script will auto-create an organization for every user who currently has documents, and re-link those documents to the new org. Users without documents are unaffected.
+
+> [!CAUTION]
+> **Shadcn Note**: The project uses **React + Shadcn/ui** (not Svelte). The plan uses existing Shadcn React components (`Dialog`, [Select](file:///c:/Users/graha/Desktop/AI-ChatBot/components/DocumentsView.tsx#161-170), `Badge`, `Avatar`) to build the org management UI consistently.
+
+---
+
+## 1. Database Schema Changes
+
+### New Tables
+
+#### [NEW] `organizations` table
+| Column | Type | Notes |
+|--------|------|-------|
+| [id](file:///c:/Users/graha/Desktop/AI-ChatBot/node_modules/@neondatabase/auth/dist/next/server/index.d.mts#309-327) | `uuid` PK | Auto-generated |
+| `name` | `text` | Org display name |
+| `orgCode` | `varchar(12)` | Unique, auto-generated invite code |
+| `createdBy` | `text` | FK → `user.id` (the Super Admin) |
+| `createdAt` | `timestamp` | |
+| `updatedAt` | `timestamp` | |
+
+#### [NEW] `org_members` table (intermediary/junction)
+| Column | Type | Notes |
+|--------|------|-------|
+| [id](file:///c:/Users/graha/Desktop/AI-ChatBot/node_modules/@neondatabase/auth/dist/next/server/index.d.mts#309-327) | `uuid` PK | |
+| `orgId` | `uuid` FK | → `organizations.id` |
+| `userId` | `text` FK | → `user.id` |
+| `role` | `varchar(20)` | `'super_admin'` / `'admin'` / `'user'` |
+| `joinedAt` | `timestamp` | |
+
+Unique constraint on [(orgId, userId)](file:///c:/Users/graha/Desktop/AI-ChatBot/components/ChatView.tsx#272-273).
+
+### Altered Tables
+
+| Table | Change |
+|-------|--------|
+| `documents` | Add `orgId uuid` FK → `organizations.id` |
+| `document_embeddings` | Add `orgId uuid` FK → `organizations.id` |
+| `chatbot_settings` | Add `orgId uuid` FK → `organizations.id` |
+| `usage_logs` | Add `orgId uuid` FK → `organizations.id` |
+| `conversations` | **No change** — stays user-scoped (personal history) |
+| `messages` | **No change** — stays user-scoped via conversation |
+| `user_plans` | **No change** — stays user-scoped (personal billing) |
+
+> [!NOTE]
+> `conversations` and `messages` remain personal to each user. Only **documents**, **embeddings**, **settings**, and **usage logs** become org-scoped, because the knowledge base is shared across the organization.
+
+### Schema File Changes
+
+#### [MODIFY] [schema.ts](file:///c:/Users/graha/Desktop/AI-ChatBot/lib/db/schema.ts)
+- Add `organizations` table definition
+- Add `orgMembers` table definition
+- Add `orgId` column to `documents`, `documentEmbeddings`, `chatbotSettings`, `usageLogs`
+- Add Drizzle relations for the new tables
+- Add indexes on `orgId` columns
+
+---
+
+## 2. RBAC & Authorization Layer
+
+### Permission Matrix
+
+| Feature | Super Admin | Admin | Normal User |
+|---------|:-----------:|:-----:|:-----------:|
+| Chat | ✅ | ✅ | ✅ |
+| Personal chat history | ✅ | ✅ | ✅ |
+| Theme toggle (Dark/Light) | ✅ | ✅ | ✅ |
+| Upload documents | ✅ | ✅ | ❌ |
+| Delete documents | ✅ | ✅ | ❌ |
+| View usage metrics | ✅ | ✅ | ❌ |
+| View per-user usage | ✅ | ✅ | ❌ |
+| Guardrails / System prompt | ✅ | ❌ | ❌ |
+| Branding configuration | ✅ | ❌ | ❌ |
+| Model selection | ✅ | ❌ | ❌ |
+| Manage org members | ✅ | ❌ | ❌ |
+| Change user roles | ✅ | ❌ | ❌ |
+| View org-code | ✅ | ❌ | ❌ |
+| Delete organization | ✅ | ❌ | ❌ |
+
+### New Files
+
+#### [NEW] [rbac.ts](file:///c:/Users/graha/Desktop/AI-ChatBot/lib/auth/rbac.ts)
+- `getUserOrgMembership(userId)` → returns `{ orgId, role }` or `null`
+- `requireRole(userId, requiredRole)` → throws 403 if insufficient
+- `requireOrg(userId)` → returns `orgId` or throws 403
+- Constants: `ROLES = { SUPER_ADMIN, ADMIN, USER }`
+
+#### [MODIFY] [utils.ts](file:///c:/Users/graha/Desktop/AI-ChatBot/lib/auth/utils.ts)
+- Add `getUserOrgContext()` → returns `{ userId, orgId, role }`
+
+---
+
+## 3. API Route Changes
+
+### New Org Management Routes
+
+#### [NEW] `app/api/organizations/route.ts`
+- [POST](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/chat/route.ts#12-311) — Create a new organization (auto-assigns creator as Super Admin, generates org-code)
+- [GET](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/settings/route.ts#10-38) — Get the current user's organization details
+
+#### [NEW] `app/api/organizations/join/route.ts`
+- `POST { orgCode }` — Join an org via code (auto-assigns Normal User role)
+
+#### [NEW] `app/api/organizations/members/route.ts`
+- [GET](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/settings/route.ts#10-38) — List all members (Super Admin / Admin only)
+- `PATCH` — Change a member's role (Super Admin only)
+- [DELETE](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/conversations/%5Bid%5D/route.ts#31-58) — Remove a member (Super Admin only)
+
+### Modified Existing Routes
+
+| Route | Current Scoping | New Scoping | Changes |
+|-------|----------------|-------------|---------|
+| [GET /api/documents](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/documents/route.ts) | `userId` | `orgId` | Query by org; role-gate uploads to Admin+ |
+| [POST /api/documents](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/documents/route.ts) | `userId` | `orgId` | Insert `orgId`; require Admin+ role |
+| [DELETE /api/documents/[id]](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/documents/%5Bid%5D/route.ts) | `userId` | `orgId` | Verify org ownership; require Admin+ |
+| [GET /api/settings](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/settings/route.ts) | `userId` | `orgId` | Read org-level settings |
+| [POST /api/settings](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/settings/route.ts) | `userId` | `orgId` | Write org-level settings; Super Admin only |
+| [GET /api/usage](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/usage/route.ts) | `userId` | `orgId` | Aggregate by org; Admin+ can view per-user breakdown |
+| [POST /api/chat](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/chat/route.ts) | `userId` | `orgId` for docs, `userId` for conversation | RAG search by `orgId`; conversation by `userId` |
+| [GET/POST /api/conversations](file:///c:/Users/graha/Desktop/AI-ChatBot/app/api/conversations/route.ts) | `userId` | `userId` (unchanged) | No change — personal |
+
+### Service Layer Changes
+
+#### [MODIFY] [vectorStore.ts](file:///c:/Users/graha/Desktop/AI-ChatBot/lib/services/vectorStore.ts)
+- [addDocumentToVectorStore(orgId, documentId, ...)](file:///c:/Users/graha/Desktop/AI-ChatBot/lib/services/vectorStore.ts#96-130) — change scoping param from `userId` to `orgId`
+- [searchSimilarDocuments(orgId, query, ...)](file:///c:/Users/graha/Desktop/AI-ChatBot/lib/services/vectorStore.ts#131-170) — search by `orgId`
+- [deleteDocumentFromVectorStore(orgId, documentId)](file:///c:/Users/graha/Desktop/AI-ChatBot/lib/services/vectorStore.ts#171-192) — delete by `orgId`
+
+---
+
+## 4. UI Component Changes
+
+### New Components
+
+#### [NEW] `components/OrgSetup.tsx`
+Full-page component shown when user has no org. Two cards:
+- **Create Organization**: Name input → generates org-code → redirects to dashboard
+- **Join Organization**: Org-code input → validates → redirects to dashboard
+
+#### [NEW] `components/OrgMembersView.tsx`
+Table view for Super Admins to manage members:
+- Columns: Name, Email, Role, Joined, Actions
+- Actions: Role dropdown ([Select](file:///c:/Users/graha/Desktop/AI-ChatBot/components/DocumentsView.tsx#161-170)), Remove button (`AlertDialog`)
+- Org-code display with copy button
+
+### Modified Components
+
+| Component | Changes |
+|-----------|---------|
+| [dashboard/page.tsx](file:///c:/Users/graha/Desktop/AI-ChatBot/app/dashboard/page.tsx) | Add org-context check; show `OrgSetup` if no org; conditionally show tabs based on role |
+| [SettingsView.tsx](file:///c:/Users/graha/Desktop/AI-ChatBot/components/SettingsView.tsx) | Hide Documents/Guardrails/Branding/Model tabs for Normal Users; add "Organization" tab for Super Admins |
+| [DocumentsView.tsx](file:///c:/Users/graha/Desktop/AI-ChatBot/components/DocumentsView.tsx) | Hide upload/delete buttons for Normal Users |
+| [ChatView.tsx](file:///c:/Users/graha/Desktop/AI-ChatBot/components/ChatView.tsx) | No functional changes — already user-scoped |
+| [ConversationSidebar.tsx](file:///c:/Users/graha/Desktop/AI-ChatBot/components/ConversationSidebar.tsx) | No changes — already user-scoped |
+
+### New Shadcn Components Needed
+- `npx shadcn@latest add dialog` (for org creation/join modals)
+- `npx shadcn@latest add select` (for role dropdowns)
+- `npx shadcn@latest add badge` (for role badges)
+- `npx shadcn@latest add avatar` (for member list)
+- `npx shadcn@latest add toast` (for success/error notifications)
+- `npx shadcn@latest add table` (for members list)
+
+---
+
+## 5. Data Migration Strategy
+
+#### [NEW] [migrate-orgs.ts](file:///c:/Users/graha/Desktop/AI-ChatBot/scripts/migrate-orgs.ts)
+SQL-driven migration script:
+
+```
+1. SELECT DISTINCT user_id FROM documents
+2. For each user_id:
+   a. INSERT INTO organizations (name, orgCode, createdBy)
+      → name = user's email prefix + "'s Org"
+      → orgCode = random 8-char alphanumeric
+   b. INSERT INTO org_members (orgId, userId, role = 'super_admin')
+   c. UPDATE documents SET orgId = newOrgId WHERE userId = user_id
+   d. UPDATE document_embeddings SET orgId = newOrgId WHERE userId = user_id
+   e. UPDATE chatbot_settings SET orgId = newOrgId WHERE userId = user_id
+   f. UPDATE usage_logs SET orgId = newOrgId WHERE userId = user_id
+3. Log results
+```
+
+> [!IMPORTANT]
+> This migration is **idempotent** — it will skip users who already have an org.
+
+---
+
+## 6. Execution Order
+
+| Step | Task | Depends On |
+|------|------|------------|
+| 1 | Add Shadcn components (`dialog`, `select`, `badge`, `avatar`, `toast`, `table`) | — |
+| 2 | Update [schema.ts](file:///c:/Users/graha/Desktop/AI-ChatBot/lib/db/schema.ts) with new tables and `orgId` columns | — |
+| 3 | Run `drizzle-kit push` to apply schema changes | Step 2 |
+| 4 | Create `lib/auth/rbac.ts` authorization utilities | Step 2 |
+| 5 | Create org management API routes | Steps 3, 4 |
+| 6 | Run data migration script `migrate-orgs.ts` | Step 3 |
+| 7 | Update existing API routes with org-scoping | Steps 4, 6 |
+| 8 | Update [vectorStore.ts](file:///c:/Users/graha/Desktop/AI-ChatBot/lib/services/vectorStore.ts) service to use `orgId` | Step 7 |
+| 9 | Build `OrgSetup.tsx` and `OrgMembersView.tsx` | Steps 5 |
+| 10 | Update [dashboard/page.tsx](file:///c:/Users/graha/Desktop/AI-ChatBot/app/dashboard/page.tsx) with org-context and role-gating | Steps 7, 9 |
+| 11 | Update [SettingsView.tsx](file:///c:/Users/graha/Desktop/AI-ChatBot/components/SettingsView.tsx) and [DocumentsView.tsx](file:///c:/Users/graha/Desktop/AI-ChatBot/components/DocumentsView.tsx) for RBAC | Step 10 |
+| 12 | Build, test, deploy | All |
+
+---
+
+## Verification Plan
+
+### Automated
+- `npm run build` — verify zero TypeScript errors
+- Migration script dry-run on staging
+
+### Manual
+1. **New user flow**: Sign up → see OrgSetup screen → create org → get org-code → see dashboard
+2. **Join flow**: New user → paste org-code → assigned Normal User → can chat but cannot upload
+3. **Admin promotion**: Super Admin changes user to Admin → user can now upload docs
+4. **Data isolation**: Org A cannot see Org B's documents or embeddings
+5. **Legacy data**: Existing documents appear under the auto-created org
