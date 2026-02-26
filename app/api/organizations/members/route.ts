@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/neon';
 import { orgMembers, users } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { getUserId } from '@/lib/auth/utils';
 import { requireRole, isValidRole, ROLES, type Role } from '@/lib/auth/rbac';
 
@@ -28,7 +28,7 @@ export async function GET() {
                 image: users.image,
             })
             .from(orgMembers)
-            .innerJoin(users, eq(orgMembers.userId, users.id))
+            .innerJoin(users, sql`${orgMembers.userId}::uuid = ${users.id}`)
             .where(eq(orgMembers.orgId, orgId));
 
         return Response.json({ members });
