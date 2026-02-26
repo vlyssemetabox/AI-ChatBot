@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, BookOpen, Loader2, Sparkles, AlertTriangle } from 'lucide-react';
+import { Send, Bot, User, BookOpen, Loader2, Search, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -210,7 +210,7 @@ export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, f
                             </>
                         ) : (
                             <div className="bg-primary/10 p-6 rounded-3xl animate-in fade-in zoom-in duration-500">
-                                <Sparkles className="w-16 h-16 text-primary" />
+                                <Search className="w-16 h-16 text-primary" />
                             </div>
                         )}
                     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MessageSquare, Settings, Sparkles, Loader2, LogOut, FileText, Users } from 'lucide-react';
+import { MessageSquare, Settings, Search, Loader2, LogOut, FileText, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ChatView } from '@/components/ChatView';
@@ -166,7 +166,7 @@ export default function DashboardPage() {
                             </>
                         ) : (
                             <div className="bg-primary/10 p-2 rounded-lg">
-                                <Sparkles className="w-5 h-5 text-primary" />
+                                <Search className="w-5 h-5 text-primary" />
                             </div>
                         )}
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Search, Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth/client';
 
@@ -61,7 +61,7 @@ export default function SignupPage() {
             <div className="text-center space-y-2">
                 <Link href="/" className="inline-flex items-center gap-2 mb-4 group">
                     <div className="bg-primary/10 p-2.5 rounded-xl group-hover:bg-primary/20 transition-colors">
-                        <Sparkles className="w-6 h-6 text-primary" />
+                        <Search className="w-6 h-6 text-primary" />
                     </div>
                     <span className="text-xl font-bold text-foreground">Sherlock</span>
                 </Link>

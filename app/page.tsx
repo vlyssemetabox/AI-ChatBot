@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Sparkles, FileSearch, Shield, MessageSquare, Upload, Brain, Zap, ArrowRight, ChevronRight, Users, Building2 } from 'lucide-react';
+import { Search, FileSearch, Shield, MessageSquare, Upload, Brain, Zap, ArrowRight, ChevronRight, Users, Building2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 const features = [
@@ -50,7 +50,7 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-16">
                     <div className="flex items-center gap-2">
                         <div className="bg-primary/10 p-2 rounded-xl">
-                            <Sparkles className="w-5 h-5 text-primary" />
+                            <Search className="w-5 h-5 text-primary" />
                         </div>
                         <span className="text-lg font-bold">Sherlock</span>
                     </div>
@@ -203,7 +203,7 @@ export default function LandingPage() {
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
                             <div className="bg-primary/10 p-1.5 rounded-lg">
-                                <Sparkles className="w-4 h-4 text-primary" />
+                                <Search className="w-4 h-4 text-primary" />
                             </div>
                             <span className="font-semibold">Sherlock</span>
                         </div>
