@@ -29,8 +29,8 @@ This document outlines how the application works, its tech stack, and the high-l
 3. **Roles**:
    - **Super Admin**: The creator. Can destroy the entire organization (cascading delete of all files/embeddings), assign roles, and remove members.
    - **Admin**: Can upload documents, configure AI guardrails/branding, and view members.
-   - **User**: Can purely interact with the Chatbot using the Organization's knowledge base.
-4. If a user leaves or the org is destroyed, all associated DB records and Vercel Blob files are cleanly swept away.
+   - **User**: Can interact with the Chatbot, view the full team directory, and voluntarily leave the organization.
+4. **Leaving / Destroying**: If a user clicks "Leave Organization" from the Team panel, their membership is revoked and they are redirected to the initial gateway to join or create a new organization. If a super admin destroys the org, all associated DB records and Vercel Blob files are cleanly swept away.
 
 ### 3. Document Ingestion & RAG Flow (Retrieval-Augmented Generation)
 1. **Upload**: An Admin uploads a document (PDF, DOCX, TXT, XLSX).
