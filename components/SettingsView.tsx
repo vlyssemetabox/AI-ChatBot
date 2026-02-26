@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { DocumentsView } from '@/components/DocumentsView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
@@ -62,7 +61,7 @@ interface UsageStats {
     total_requests: number;
 }
 
-type Tab = 'guardrails' | 'documents' | 'branding' | 'models';
+type Tab = 'guardrails' | 'branding' | 'models';
 
 // Extracted Component to prevent re-mounting on state changes
 const LogoInputSection = ({
@@ -158,7 +157,7 @@ const LogoInputSection = ({
 
 export function SettingsView({ isActive = false }: { isActive?: boolean }) {
     // Layout State
-    const [activeTab, setActiveTab] = useState<Tab>('documents');
+    const [activeTab, setActiveTab] = useState<Tab>('guardrails');
     const [collapsed, setCollapsed] = useState(true);
 
     // Settings State
@@ -363,19 +362,6 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
 
                 <div className="flex-1 py-4 space-y-2 p-2">
                     <Button
-                        variant={activeTab === 'documents' ? "default" : "ghost"}
-                        onClick={() => { setActiveTab('documents'); if (window.innerWidth < 768) setCollapsed(true); }}
-                        className={cn(
-                            "w-full justify-start gap-2 h-10",
-                            collapsed ? "justify-center px-0" : "px-4"
-                        )}
-                        title="Knowledge Base"
-                    >
-                        <FileText className="w-4 h-4 flex-shrink-0" />
-                        {!collapsed && <span>Knowledge Base</span>}
-                    </Button>
-
-                    <Button
                         variant={activeTab === 'guardrails' ? "default" : "ghost"}
                         onClick={() => { setActiveTab('guardrails'); if (window.innerWidth < 768) setCollapsed(true); }}
                         className={cn(
@@ -421,11 +407,10 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
                 "flex-1",
                 // Mobile: Add padding-left to clear the collapsed sidebar (16px width ~ 4rem)
                 "pl-[4.5rem] md:pl-0",
-                activeTab === 'documents' ? "overflow-hidden" : "overflow-auto"
+                "overflow-auto"
             )}>
                 <div className={cn(
-                    "h-full",
-                    activeTab !== 'documents' && "p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6"
+                    "h-full p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6"
                 )}>
 
                     {/* Guardrails Content */}
@@ -587,11 +572,6 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
                             </Card>
                             <div className="h-20" />
                         </div>
-                    </div>
-
-                    {/* Documents Content */}
-                    <div className={activeTab === 'documents' ? 'block h-full' : 'hidden'}>
-                        <DocumentsView />
                     </div>
 
                     {/* Branding Content */}

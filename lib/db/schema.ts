@@ -9,6 +9,7 @@ import {
     index,
     varchar,
     uniqueIndex,
+    pgSchema,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -19,51 +20,53 @@ import { relations } from 'drizzle-orm';
 // Do NOT push these via drizzle-kit — they already exist.
 // ============================================================
 
-export const users = pgTable('user', {
+export const neonAuthSchema = pgSchema('neon_auth');
+
+export const users = neonAuthSchema.table('user', {
     id: text('id').primaryKey(),
     name: text('name').notNull(),
     email: text('email').notNull().unique(),
-    emailVerified: timestamp('email_verified'),
+    emailVerified: timestamp('emailVerified'),
     image: text('image'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
-export const sessions = pgTable('session', {
+export const sessions = neonAuthSchema.table('session', {
     id: text('id').primaryKey(),
-    userId: text('user_id')
+    userId: text('userId')
         .notNull()
         .references(() => users.id, { onDelete: 'cascade' }),
     token: text('token').notNull().unique(),
-    expiresAt: timestamp('expires_at').notNull(),
-    ipAddress: text('ip_address'),
-    userAgent: text('user_agent'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    expiresAt: timestamp('expiresAt').notNull(),
+    ipAddress: text('ipAddress'),
+    userAgent: text('userAgent'),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
-export const accounts = pgTable('account', {
+export const accounts = neonAuthSchema.table('account', {
     id: text('id').primaryKey(),
-    userId: text('user_id')
+    userId: text('userId')
         .notNull()
         .references(() => users.id, { onDelete: 'cascade' }),
-    accountId: text('account_id').notNull(),
-    providerId: text('provider_id').notNull(),
-    accessToken: text('access_token'),
-    refreshToken: text('refresh_token'),
-    expiresAt: timestamp('expires_at'),
+    accountId: text('accountId').notNull(),
+    providerId: text('providerId').notNull(),
+    accessToken: text('accessToken'),
+    refreshToken: text('refreshToken'),
+    expiresAt: timestamp('expiresAt'),
     password: text('password'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
-export const verifications = pgTable('verification', {
+export const verifications = neonAuthSchema.table('verification', {
     id: text('id').primaryKey(),
     identifier: text('identifier').notNull(),
     value: text('value').notNull(),
-    expiresAt: timestamp('expires_at').notNull(),
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at').defaultNow(),
+    expiresAt: timestamp('expiresAt').notNull(),
+    createdAt: timestamp('createdAt').defaultNow(),
+    updatedAt: timestamp('updatedAt').defaultNow(),
 });
 
 // ============================================================
