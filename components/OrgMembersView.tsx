@@ -182,6 +182,7 @@ export function OrgMembersView({ role, orgCode, orgName }: OrgMembersViewProps) 
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
+                                                    <SelectItem value="super_admin">Super Admin</SelectItem>
                                                     <SelectItem value="admin">Admin</SelectItem>
                                                     <SelectItem value="user">User</SelectItem>
                                                 </SelectContent>
@@ -240,117 +241,121 @@ export function OrgMembersView({ role, orgCode, orgName }: OrgMembersViewProps) 
             </p>
 
             {/* Leave Organization — Normal User / Admin only */}
-            {!isSuperAdmin && (
-                <div className="pt-4 border-t border-border">
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="w-full gap-2 text-muted-foreground hover:text-destructive hover:border-destructive/50"
-                                disabled={leaveLoading}
-                            >
-                                {leaveLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-                                Leave Organization
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Leave this organization?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    You will lose access to all shared documents and settings. You can rejoin later using the invite code.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    onClick={async () => {
-                                        setLeaveLoading(true);
-                                        try {
-                                            const res = await fetch('/api/organizations/leave', { method: 'POST' });
-                                            if (res.ok) window.location.reload();
-                                        } catch (err) {
-                                            console.error('Failed to leave:', err);
-                                        } finally {
-                                            setLeaveLoading(false);
-                                        }
-                                    }}
-                                >
-                                    Leave
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
-            )}
-
-            {/* Destroy Organization — Super Admin only */}
-            {isSuperAdmin && (
-                <div className="pt-4 border-t border-border space-y-3">
-                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
-                        <div className="flex items-center gap-2">
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                            <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Permanently destroy this organization and all its data — documents, embeddings, settings, and usage logs. This action <strong>cannot be undone</strong>.
-                        </p>
-
-                        <AlertDialog open={showDestroyDialog} onOpenChange={(open) => { setShowDestroyDialog(open); if (!open) setDestroyConfirmName(''); }}>
+            {
+                !isSuperAdmin && (
+                    <div className="pt-4 border-t border-border">
+                        <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    className="w-full gap-2"
-                                    disabled={destroyLoading}
+                                    variant="outline"
+                                    className="w-full gap-2 text-muted-foreground hover:text-destructive hover:border-destructive/50"
+                                    disabled={leaveLoading}
                                 >
-                                    {destroyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                                    Destroy Organization
+                                    {leaveLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                                    Leave Organization
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle className="text-destructive">Destroy Organization?</AlertDialogTitle>
+                                    <AlertDialogTitle>Leave this organization?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This will permanently delete <strong>{orgName}</strong> and all associated data. Type the organization name below to confirm.
+                                        You will lose access to all shared documents and settings. You can rejoin later using the invite code.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
-                                <div className="py-2">
-                                    <input
-                                        type="text"
-                                        placeholder={orgName || 'Organization name'}
-                                        value={destroyConfirmName}
-                                        onChange={(e) => setDestroyConfirmName(e.target.value)}
-                                        className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-destructive/20 focus:border-destructive"
-                                    />
-                                </div>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                                     <AlertDialogAction
                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                        disabled={destroyConfirmName !== orgName || destroyLoading}
-                                        onClick={async (e) => {
-                                            e.preventDefault();
-                                            setDestroyLoading(true);
+                                        onClick={async () => {
+                                            setLeaveLoading(true);
                                             try {
-                                                const res = await fetch('/api/organizations', { method: 'DELETE' });
+                                                const res = await fetch('/api/organizations/leave', { method: 'POST' });
                                                 if (res.ok) window.location.reload();
                                             } catch (err) {
-                                                console.error('Failed to destroy:', err);
+                                                console.error('Failed to leave:', err);
                                             } finally {
-                                                setDestroyLoading(false);
-                                                setShowDestroyDialog(false);
+                                                setLeaveLoading(false);
                                             }
                                         }}
                                     >
-                                        {destroyLoading ? 'Destroying…' : 'Destroy Forever'}
+                                        Leave
                                     </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            {/* Destroy Organization — Super Admin only */}
+            {
+                isSuperAdmin && (
+                    <div className="pt-4 border-t border-border space-y-3">
+                        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                                <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Permanently destroy this organization and all its data — documents, embeddings, settings, and usage logs. This action <strong>cannot be undone</strong>.
+                            </p>
+
+                            <AlertDialog open={showDestroyDialog} onOpenChange={(open) => { setShowDestroyDialog(open); if (!open) setDestroyConfirmName(''); }}>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        className="w-full gap-2"
+                                        disabled={destroyLoading}
+                                    >
+                                        {destroyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                        Destroy Organization
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="text-destructive">Destroy Organization?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will permanently delete <strong>{orgName}</strong> and all associated data. Type the organization name below to confirm.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <div className="py-2">
+                                        <input
+                                            type="text"
+                                            placeholder={orgName || 'Organization name'}
+                                            value={destroyConfirmName}
+                                            onChange={(e) => setDestroyConfirmName(e.target.value)}
+                                            className="w-full h-10 px-3 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-destructive/20 focus:border-destructive"
+                                        />
+                                    </div>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                            disabled={destroyConfirmName !== orgName || destroyLoading}
+                                            onClick={async (e) => {
+                                                e.preventDefault();
+                                                setDestroyLoading(true);
+                                                try {
+                                                    const res = await fetch('/api/organizations', { method: 'DELETE' });
+                                                    if (res.ok) window.location.reload();
+                                                } catch (err) {
+                                                    console.error('Failed to destroy:', err);
+                                                } finally {
+                                                    setDestroyLoading(false);
+                                                    setShowDestroyDialog(false);
+                                                }
+                                            }}
+                                        >
+                                            {destroyLoading ? 'Destroying…' : 'Destroy Forever'}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 }
