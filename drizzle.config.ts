@@ -9,6 +9,10 @@ export default defineConfig({
     },
     // Only manage application tables — auth tables are managed by Neon Auth
     tablesFilter: [
+        'organizations',
+        'org_members',
+        'departments',
+        'user_department_access',
         'documents',
         'document_embeddings',
         'chatbot_settings',

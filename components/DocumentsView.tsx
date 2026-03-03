@@ -17,13 +17,23 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Document {
     id: string;
     filename: string;
-    upload_date: string;
+    uploadDate: string;
     chunks: number;
-    text_length: number;
+    textLength: number;
+    departmentId: string | null;
+}
+
+interface Department {
+    id: string;
+    name: string;
 }
 
 export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
@@ -39,12 +49,36 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteProgress, setDeleteProgress] = useState({ current: 0, total: 0 });
     const [totalUploads, setTotalUploads] = useState(0);
+    const [departments, setDepartments] = useState<Department[]>([]);
+
+    // UI state
+    const [activeTab, setActiveTab] = useState<string>('');
+    const [pendingFiles, setPendingFiles] = useState<FileList | null>(null);
+    const [uploadTargetDeptId, setUploadTargetDeptId] = useState<string>('');
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cancelRef = useRef(false);
 
     useEffect(() => {
         fetchDocuments();
+        fetchDepartments();
     }, []);
+
+    const fetchDepartments = async () => {
+        try {
+            const response = await fetch('/api/departments?mine=true');
+            const data = await response.json();
+            if (data.departments) {
+                setDepartments(data.departments);
+                if (data.departments.length > 0) {
+                    setActiveTab(data.departments[0].id);
+                    setUploadTargetDeptId(data.departments[0].id);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching departments:', err);
+        }
+    };
 
     const fetchDocuments = async () => {
         try {
@@ -72,7 +106,7 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
 
         const files = e.dataTransfer.files;
         if (files && files.length > 0) {
-            await handleFiles(files);
+            setPendingFiles(files);
         }
     };
 
@@ -82,17 +116,25 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
 
     const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            await handleFiles(e.target.files);
+            setPendingFiles(e.target.files);
         }
     };
 
-    const handleFiles = async (files: FileList) => {
+    const confirmUpload = async () => {
+        if (!pendingFiles || pendingFiles.length === 0) return;
+        if (!uploadTargetDeptId) {
+            setError('Please select a target department before uploading.');
+            return;
+        }
+
+        const filesToUpload = pendingFiles;
+        setPendingFiles(null);
         setUploading(true);
         setError('');
-        setTotalUploads(files.length);
+        setTotalUploads(filesToUpload.length);
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+        for (let i = 0; i < filesToUpload.length; i++) {
+            const file = filesToUpload[i];
             setCurrentFile(file.name);
             // setUploadProgress(0); // Removed to prevent visual reset loop, relying on global calculation
 
@@ -105,13 +147,14 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
                     currentFileProgress = currentFileProgress >= 90 ? currentFileProgress : currentFileProgress + 10;
 
                     // Calculate global progress: ((files_done * 100) + current_file_progress) / total_files
-                    const globalProgress = ((i * 100) + currentFileProgress) / files.length;
+                    const globalProgress = ((i * 100) + currentFileProgress) / filesToUpload.length;
                     return globalProgress;
                 });
             }, 500);
 
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('departmentId', uploadTargetDeptId);
 
             try {
                 const response = await fetch('/api/documents', {
@@ -121,7 +164,7 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
 
                 clearInterval(progressInterval);
                 // Ensure we hit the next "step" in global progress
-                setUploadProgress(((i + 1) * 100) / files.length);
+                setUploadProgress(((i + 1) * 100) / filesToUpload.length);
 
                 if (!response.ok) {
                     const data = await response.json();
@@ -135,9 +178,10 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
                         {
                             id: data.document.id,
                             filename: data.document.filename,
-                            upload_date: new Date().toISOString(),
+                            uploadDate: new Date().toISOString(),
                             chunks: data.document.chunks,
-                            text_length: data.document.textLength,
+                            textLength: data.document.textLength,
+                            departmentId: uploadTargetDeptId
                         },
                         ...prev
                     ]);
@@ -235,50 +279,57 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
                 </div>
 
                 {canManage && (
-                    <Card
-                        className={cn(
-                            "border-2 border-dashed transition-all cursor-pointer relative overflow-hidden",
-                            isDragging ? "border-primary bg-primary/5 scale-[1.01]" : "border-border hover:border-primary/50 hover:bg-muted/50"
-                        )}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onClick={handleFileClick}
-                    >
-                        <CardContent className="flex flex-col items-center justify-center py-12 md:py-16">
-                            <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                {uploading ? (
-                                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                                ) : (
-                                    <Upload className="w-8 h-8 text-primary" />
-                                )}
-                            </div>
-                            <p className="text-lg font-medium mb-2">
-                                {uploading ? 'Processing documents...' : 'Drop files here or click to browse'}
-                            </p>
-                            {uploading && currentFile && (
-                                <div className="w-full max-w-xs space-y-2 mb-4">
-                                    <Progress value={uploadProgress} className="h-2" />
-                                    <p className="text-xs text-muted-foreground truncate">
-                                        Uploading {currentFile} ({Math.round(uploadProgress)}%)
-                                        <span className="block mt-1 opacity-75">File {uploading && currentFile ? (Math.floor((uploadProgress / 100) * (totalUploads || 1)) + 1) : 0} of {totalUploads}</span>
-                                    </p>
-                                </div>
+                    <div className="space-y-4">
+                        <Card
+                            className={cn(
+                                "border-2 border-dashed transition-all relative overflow-hidden",
+                                departments.length === 0 ? "opacity-50 pointer-events-none" : "cursor-pointer",
+                                isDragging ? "border-primary bg-primary/5 scale-[1.01]" : "border-border hover:border-primary/50 hover:bg-muted/50"
                             )}
-                            <p className="text-sm text-muted-foreground mb-6">Supports PDF, TXT, DOCX, EXCEL (max 10MB)</p>
-                            <Button disabled={uploading} variant="secondary">
-                                {uploading ? 'Uploading...' : 'Choose Files'}
-                            </Button>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                className="hidden"
-                                accept=".pdf,.txt,.docx,.xlsx,.xls"
-                                multiple
-                                onChange={handleFileInput}
-                            />
-                        </CardContent>
-                    </Card>
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            onClick={handleFileClick}
+                        >
+                            <CardContent className="flex flex-col items-center justify-center py-12 md:py-16">
+                                <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    {uploading ? (
+                                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                                    ) : (
+                                        <Upload className="w-8 h-8 text-primary" />
+                                    )}
+                                </div>
+                                <p className="text-lg font-medium mb-2">
+                                    {uploading ? 'Processing documents...' : 'Drop files here or click to browse'}
+                                </p>
+                                {uploading && currentFile && (
+                                    <div className="w-full max-w-xs space-y-2 mb-4">
+                                        <Progress value={uploadProgress} className="h-2" />
+                                        <p className="text-xs text-muted-foreground truncate">
+                                            Uploading {currentFile} ({Math.round(uploadProgress)}%)
+                                            <span className="block mt-1 opacity-75">File {uploading && currentFile ? (Math.floor((uploadProgress / 100) * (totalUploads || 1)) + 1) : 0} of {totalUploads}</span>
+                                        </p>
+                                    </div>
+                                )}
+                                <p className="text-sm text-muted-foreground mb-6">Supports PDF, TXT, DOCX, EXCEL (max 10MB)</p>
+                                <Button disabled={uploading || departments.length === 0} variant="secondary">
+                                    {uploading ? 'Uploading...' : 'Choose Files'}
+                                </Button>
+                                {departments.length === 0 && (
+                                    <p className="text-xs text-destructive mt-4">You must be assigned to a department to upload documents.</p>
+                                )}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    accept=".pdf,.txt,.docx,.xlsx,.xls"
+                                    multiple
+                                    onChange={handleFileInput}
+                                    onClick={e => (e.target as HTMLInputElement).value = ''}
+                                />
+                            </CardContent>
+                        </Card>
+                    </div>
                 )}
 
                 {error && (
@@ -303,7 +354,7 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
                                 <h2 className="text-xl font-semibold tracking-tight">
                                     Uploaded Documents
                                 </h2>
-                                <span className="text-muted-foreground text-sm font-normal">({documents.length})</span>
+                                <span className="text-muted-foreground text-sm font-normal">({documents.length} total)</span>
                             </div>
                         </div>
                         {canManage && selectedDocs.size > 0 && (
@@ -319,66 +370,130 @@ export function DocumentsView({ canManage = true }: { canManage?: boolean }) {
                         )}
                     </div>
 
-                    {documents.length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-xl border border-dashed">
-                            <p>No documents uploaded yet</p>
-                        </div>
+                    {departments.length > 0 ? (
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList className="mb-6 flex overflow-x-auto justify-start border-b rounded-none bg-transparent h-auto p-0 space-x-6">
+                                {departments.map(dept => (
+                                    <TabsTrigger
+                                        key={dept.id}
+                                        value={dept.id}
+                                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none data-[state=active]:bg-transparent px-1 pb-3 pt-2 text-muted-foreground data-[state=active]:text-foreground"
+                                    >
+                                        {dept.name}
+                                        <span className="ml-2 py-0.5 px-2 bg-muted text-muted-foreground text-xs rounded-full">
+                                            {documents.filter(d => d.departmentId === dept.id).length}
+                                        </span>
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+
+                            {departments.map(dept => {
+                                const deptDocs = documents.filter(d => d.departmentId === dept.id);
+                                return (
+                                    <TabsContent key={dept.id} value={dept.id} className="mt-0 outline-none">
+                                        {deptDocs.length === 0 ? (
+                                            <div className="text-center py-12 text-muted-foreground bg-background rounded-xl border border-dashed">
+                                                <p>No documents uploaded to this department yet</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {deptDocs.map((doc) => (
+                                                    <Card key={doc.id} className="group hover:shadow-md transition-all border-muted hover:border-border">
+                                                        <CardContent className="p-4">
+                                                            <div className="flex items-start gap-3">
+                                                                {canManage && (
+                                                                    <div className="pt-3">
+                                                                        <Checkbox
+                                                                            checked={selectedDocs.has(doc.id)}
+                                                                            onCheckedChange={() => toggleSelection(doc.id)}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                                                                    <FileText className="w-5 h-5 text-primary" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="font-medium text-sm truncate mb-1" title={doc.filename}>{doc.filename}</p>
+                                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                        <span className="bg-muted px-1.5 py-0.5 rounded">{doc.chunks} chunks</span>
+                                                                        <span>•</span>
+                                                                        <span>{formatNumber(doc.textLength)} chars</span>
+                                                                    </div>
+                                                                    <p className="text-[10px] text-muted-foreground mt-2">
+                                                                        {doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString() : 'Unknown'}
+                                                                    </p>
+                                                                </div>
+                                                                {canManage && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setDocsToDelete([doc.id]);
+                                                                        }}
+                                                                        disabled={deletingId === doc.id}
+                                                                    >
+                                                                        {deletingId === doc.id ? (
+                                                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                                                        ) : (
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                        )}
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </TabsContent>
+                                )
+                            })}
+                        </Tabs>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {documents.map((doc) => (
-                                <Card key={doc.id} className="group hover:shadow-md transition-all border-muted hover:border-border">
-                                    <CardContent className="p-4">
-                                        <div className="flex items-start gap-3">
-                                            {canManage && (
-                                                <div className="pt-3">
-                                                    <Checkbox
-                                                        checked={selectedDocs.has(doc.id)}
-                                                        onCheckedChange={() => toggleSelection(doc.id)}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    />
-                                                </div>
-                                            )}
-                                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                                <FileText className="w-5 h-5 text-primary" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-sm truncate mb-1" title={doc.filename}>{doc.filename}</p>
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <span className="bg-muted px-1.5 py-0.5 rounded">{doc.chunks} chunks</span>
-                                                    <span>•</span>
-                                                    <span>{formatNumber(doc.text_length)} chars</span>
-                                                </div>
-                                                <p className="text-[10px] text-muted-foreground mt-2">
-                                                    {new Date(doc.upload_date).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                            {canManage && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setDocsToDelete([doc.id]);
-                                                    }}
-                                                    disabled={deletingId === doc.id}
-                                                >
-                                                    {deletingId === doc.id ? (
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                    ) : (
-                                                        <Trash2 className="w-4 h-4" />
-                                                    )}
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
+                        <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-xl border border-dashed">
+                            <p>You do not have access to any departments yet.</p>
                         </div>
                     )}
                 </div>
                 <div className="h-20" />
             </div>
+
+            <Dialog open={pendingFiles !== null} onOpenChange={(open: boolean) => {
+                if (!open) {
+                    setPendingFiles(null);
+                }
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Upload Documents Target</DialogTitle>
+                        <DialogDescription>
+                            You selected {pendingFiles?.length} file(s). Which department should these documents be added strictly to?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <Label htmlFor="upload-dept">Department:</Label>
+                        <Select value={uploadTargetDeptId} onValueChange={setUploadTargetDeptId}>
+                            <SelectTrigger id="upload-dept" className="w-full">
+                                <SelectValue placeholder="Select a department" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {departments.map(dept => (
+                                    <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPendingFiles(null)}>Cancel</Button>
+                        <Button onClick={confirmUpload} disabled={!uploadTargetDeptId || departments.length === 0}>
+                            Upload Documents
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
 
             <AlertDialog open={!!docsToDelete} onOpenChange={(open: boolean) => {

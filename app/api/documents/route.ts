@@ -5,9 +5,9 @@ import { processDocument, chunkText } from '@/lib/services/documentProcessor';
 import { addDocumentToVectorStore } from '@/lib/services/vectorStore';
 import { put } from '@vercel/blob';
 import { v4 as uuidv4 } from 'uuid';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, and, inArray } from 'drizzle-orm';
 import { getUserOrgContext } from '@/lib/auth/utils';
-import { requireRole, ROLES } from '@/lib/auth/rbac';
+import { requireRole, ROLES, getUserAuthorizedDepartments, requireDepartmentAccess } from '@/lib/auth/rbac';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,10 +24,21 @@ export async function GET() {
             return Response.json({ documents: [] });
         }
 
+        const authorizedDepts = await getUserAuthorizedDepartments(userId, orgId);
+
+        if (authorizedDepts.length === 0) {
+            return Response.json({ documents: [] });
+        }
+
         const data = await db
             .select()
             .from(documents)
-            .where(eq(documents.orgId, orgId))
+            .where(
+                and(
+                    eq(documents.orgId, orgId),
+                    inArray(documents.departmentId, authorizedDepts)
+                )
+            )
             .orderBy(desc(documents.uploadDate));
 
         return Response.json({ documents: data });
@@ -57,10 +68,18 @@ export async function POST(req: NextRequest) {
 
         const formData = await req.formData();
         const file = formData.get('file') as File;
+        const departmentId = formData.get('departmentId') as string;
 
         if (!file) {
             return Response.json({ error: 'No file uploaded' }, { status: 400 });
         }
+
+        if (!departmentId) {
+            return Response.json({ error: 'Department ID is required' }, { status: 400 });
+        }
+
+        // Validate that user has access to upload to this department
+        await requireDepartmentAccess(userId, orgId, departmentId);
 
         // Validate file type
         const allowedTypes = ['.pdf', '.txt', '.docx', '.xlsx', '.xls'];
@@ -113,6 +132,7 @@ export async function POST(req: NextRequest) {
             id: documentId,
             userId: userId,
             orgId: orgId,
+            departmentId: departmentId,
             filename,
             blobUrl: blobUrl || null,
             uploadDate: new Date(),
@@ -121,8 +141,8 @@ export async function POST(req: NextRequest) {
             textLength: text.length,
         });
 
-        // Add to vector store (embeddings) — now org-scoped
-        await addDocumentToVectorStore(orgId, documentId, chunks, {
+        // Add to vector store (embeddings) — now department-scoped
+        await addDocumentToVectorStore(orgId, departmentId, documentId, chunks, {
             filename,
             uploadDate: new Date().toISOString(),
             documentId,

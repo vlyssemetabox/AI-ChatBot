@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/neon';
 import { orgMembers } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { getUserId } from '@/lib/auth/utils';
 import { getUserOrgMembership, ROLES } from '@/lib/auth/rbac';
 
@@ -31,7 +31,7 @@ export async function POST() {
         await db
             .delete(orgMembers)
             .where(and(
-                eq(orgMembers.orgId, membership.orgId),
+                eq(orgMembers.orgId, sql`${membership.orgId}::uuid`),
                 eq(orgMembers.userId, userId)
             ));
 

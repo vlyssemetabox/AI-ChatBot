@@ -2,9 +2,10 @@ import { NextRequest } from 'next/server';
 import { searchSimilarDocuments } from '@/lib/services/vectorStore';
 import { generateStreamingCompletion, Message } from '@/lib/services/cerebrasClient';
 import { db } from '@/lib/db/neon';
-import { chatbotSettings, usageLogs, conversations, messages } from '@/lib/db/schema';
-import { eq, inArray, and } from 'drizzle-orm';
+import { chatbotSettings, usageLogs, conversations, messages, orgSubscriptions } from '@/lib/db/schema';
+import { eq, inArray, and, gte, sql } from 'drizzle-orm';
 import { getUserOrgContext } from '@/lib/auth/utils';
+import { getUserAuthorizedDepartments } from '@/lib/auth/rbac';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,51 @@ export async function POST(req: NextRequest) {
         }
 
         console.log(`💬 Query: ${message}`);
+
+        // 0. Check Organization Usage & Subscription (METERING)
+        if (orgId) {
+            // Get current subscription
+            let [sub] = await db
+                .select()
+                .from(orgSubscriptions)
+                .where(sql`CAST(${orgSubscriptions.orgId} AS TEXT) = ${orgId}::TEXT`);
+
+            // If no subscription record, assume free
+            if (!sub) {
+                [sub] = await db.insert(orgSubscriptions).values({
+                    orgId: sql`${orgId}::uuid`,
+                    plan: 'free',
+                }).returning();
+            }
+
+            if (sub.plan === 'free') {
+                const startOfMonth = new Date();
+                startOfMonth.setUTCDate(1);
+                startOfMonth.setUTCHours(0, 0, 0, 0);
+
+                const usage = await db
+                    .select({
+                        totalIn: sql<number>`sum(${usageLogs.tokensIn})`,
+                        totalOut: sql<number>`sum(${usageLogs.tokensOut})`,
+                    })
+                    .from(usageLogs)
+                    .where(and(
+                        sql`CAST(${usageLogs.orgId} AS TEXT) = ${orgId}::TEXT`,
+                        gte(usageLogs.createdAt, startOfMonth)
+                    ));
+
+                const totalTokens = (Number(usage[0]?.totalIn) || 0) + (Number(usage[0]?.totalOut) || 0);
+                const LIMIT = 50000;
+
+                if (totalTokens >= LIMIT) {
+                    return Response.json({
+                        error: 'Usage limit exceeded',
+                        message: 'Your organization has reached the free tier limit of 50,000 tokens for this month. Please upgrade to Pro in Settings to continue.',
+                        limitReached: true
+                    }, { status: 402 });
+                }
+            }
+        }
 
         // Create or update conversation
         if (!conversationId) {
@@ -94,13 +140,17 @@ export async function POST(req: NextRequest) {
 
         settings = { ...defaultSettings, ...settings };
 
-        // 2. Search for relevant documents (org-scoped if user has an org)
-        const searchScope = orgId || userId;
+        // 2. Search for relevant documents scoped to user's authorized departments
         const searchQuery = message.toLowerCase().includes('zoho')
             ? message
             : `${message} Zoho Books`;
 
-        const relevantDocs = await searchSimilarDocuments(searchScope, searchQuery, 10);
+        const authorizedDepts = orgId ? await getUserAuthorizedDepartments(userId, orgId) : [];
+
+        let relevantDocs: any[] = [];
+        if (orgId && authorizedDepts.length > 0) {
+            relevantDocs = await searchSimilarDocuments(orgId, authorizedDepts, searchQuery, 10);
+        }
 
         // 3. Build context from retrieved documents
         let context = '';

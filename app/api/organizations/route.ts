@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/neon';
 import { organizations, orgMembers, documents, documentEmbeddings, chatbotSettings, usageLogs } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getUserId } from '@/lib/auth/utils';
 import { getUserOrgMembership, generateOrgCode, ROLES } from '@/lib/auth/rbac';
 import { del } from '@vercel/blob';
@@ -24,7 +24,7 @@ export async function GET() {
         const [org] = await db
             .select()
             .from(organizations)
-            .where(eq(organizations.id, membership.orgId))
+            .where(eq(organizations.id, sql`${membership.orgId}::uuid`))
             .limit(1);
 
         return Response.json({
@@ -117,7 +117,7 @@ export async function DELETE() {
         const orgDocs = await db
             .select({ id: documents.id, blobUrl: documents.blobUrl })
             .from(documents)
-            .where(eq(documents.orgId, orgId));
+            .where(eq(documents.orgId, sql`${orgId}::uuid`));
 
         // 2. Delete blob files (best-effort, don't fail if blob is missing)
         for (const doc of orgDocs) {
@@ -131,22 +131,22 @@ export async function DELETE() {
         }
 
         // 3. Delete embeddings
-        await db.delete(documentEmbeddings).where(eq(documentEmbeddings.orgId, orgId));
+        await db.delete(documentEmbeddings).where(eq(documentEmbeddings.orgId, sql`${orgId}::uuid`));
 
         // 4. Delete documents
-        await db.delete(documents).where(eq(documents.orgId, orgId));
+        await db.delete(documents).where(eq(documents.orgId, sql`${orgId}::uuid`));
 
         // 5. Delete chatbot settings
-        await db.delete(chatbotSettings).where(eq(chatbotSettings.orgId, orgId));
+        await db.delete(chatbotSettings).where(eq(chatbotSettings.orgId, sql`${orgId}::uuid`));
 
         // 6. Delete usage logs
-        await db.delete(usageLogs).where(eq(usageLogs.orgId, orgId));
+        await db.delete(usageLogs).where(eq(usageLogs.orgId, sql`${orgId}::uuid`));
 
         // 7. Delete all org members
-        await db.delete(orgMembers).where(eq(orgMembers.orgId, orgId));
+        await db.delete(orgMembers).where(eq(orgMembers.orgId, sql`${orgId}::uuid`));
 
         // 8. Delete the organization itself
-        await db.delete(organizations).where(eq(organizations.id, orgId));
+        await db.delete(organizations).where(eq(organizations.id, sql`${orgId}::uuid`));
 
         return Response.json({ success: true });
     } catch (error: any) {

@@ -626,6 +626,57 @@ The chatbot is now a fully functional, professionally designed RAG system with p
 - Added robust error handling and UI fallback rendering (e.g. mapping `null` or `undefined` text_length metrics to 0 in Document View).
 - Completely removed legacy Express server backend directory and routing logic.
 
-### 4. Remaining Phases
+---
+
+## Phase 9 Update: Multi-Department Tenancy & Strict Data Isolation
+**Date**: 2026-03-03
+**Objective**: Re-architecture from a 1-to-1 organization structure to a multi-department model where a user strictly interacts only with documents explicitly assigned to them via department classifications.
+
+### 1. Data Models & Access Schema
+- Added new `departments` table referencing an `orgId`.
+- Added a `user_department_access` junction table to map `userId`s securely to zero, one, or multiple `departmentId`s.
+- `documents` and `document_embeddings` now contain `departmentId` to forcibly partition the text corpus strictly by department space.
+
+### 2. UI Updates
+- **Documents Dashboard**: Now groups all loaded documents into a nested "Tabs" interface based individually on their departments. 
+- **Upload Dialogue**: Dragging files or manually uploading now directly pulls up a modal asking the specific user which `Department` namespace they are directly assigning the document and vector mappings to.
+- **OrgMembers Dashboard**: Now lists explicit department associations per user and grants Super Admins explicit dropdown menus to map/unmap users to compartments. A separate "Departments" tab allows Admins + Super Admins to perform Create, Read, Update, Delete on compartments.
+
+### 3. Vector Isolation (Scoped RAG)
+- `lib/services/vectorStore.ts` now wraps search pipelines in `inArray(documentEmbeddings.departmentId, authorizedDepartmentIds)` checks dynamically querying out of bounds data to guarantee zero namespace overlaps for chatbot prompts.
+- User chats explicitly evaluate against subset collections.
+
+### 4. Remaining Tasks
 - **Phase 6**: Chat History & Conversation UI (saving the actual dialogue messages to the Drizzle database schemas).
-- **Phase 7**: Billing Stub & Context Metering (free tier quotas, Stripe/Peach Payments integrations).
+---
+
+## Session 10: Billing, Metering & UI Stability
+**Date**: 2026-03-03 (Afternoon)
+**Objective**: Implement organization-centric billing, quota enforcement, and resolve critical UUID type mismatches.
+
+#### 1. Billing & Metering
+- **Schema**: Introduced `orgSubscriptions` to track plans at the organization level.
+- **Enforcement**: Implemented real-time token tracking in `/api/chat`. Free organizations are capped at 50,000 monthly tokens.
+- **UI**: Built a premium Billing dashboard in `SettingsView.tsx` with HSL-based progress bars and a mock checkout flow.
+
+#### 2. Type Safety & Compatibility
+- **Problem**: Encountered `operator does not exist: text = uuid` errors in the Usage and Billing APIs due to Drizzle/Postgres type inference issues.
+- **Fix**: Standardized all GUID comparisons using explicit `CAST(col AS TEXT)` to guarantee compatibility across varied database environments.
+
+#### 3. Dark Mode Refinement
+- **Fix**: Resolved an issue where `--input-background` was not redefined for dark mode, causing white inputs with white text in the auth forms.
+- **Implementation**: Standardized on CSS variables using `oklch` tokens in `globals.css`.
+
+#### Files Modified
+- `app/api/billing/route.ts` - Usage aggregation
+- `app/api/billing/checkout/route.ts` - Plan upgrades
+- `app/api/usage/route.ts` - Per-user telemetry
+- `app/api/chat/route.ts` - Quota enforcement
+- `app/globals.css` - Dark mode tokens
+- `components/ui/input.tsx` - Component standardization
+
+#### Verification
+- ✅ `npm run build` passed (12+ static routes, 20+ dynamic APIs).
+- ✅ Mock upgrade flow verified with state persistence.
+- ✅ Dark mode inputs now have high-contrast visibility.
+- ✅ UUID errors eliminated via explicit casting.

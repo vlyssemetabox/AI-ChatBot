@@ -83,6 +83,43 @@ export const organizations = pgTable('organizations', {
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Departments
+export const departments = pgTable(
+    'departments',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        orgId: uuid('org_id')
+            .notNull()
+            .references(() => organizations.id, { onDelete: 'cascade' }),
+        name: text('name').notNull(),
+        icon: text('icon'),
+        createdAt: timestamp('created_at').defaultNow().notNull(),
+        updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    },
+    (table) => [
+        uniqueIndex('idx_departments_org_name').on(table.orgId, table.name),
+        index('idx_departments_org').on(table.orgId),
+    ]
+);
+
+// User Department Access (Junction Table)
+export const userDepartmentAccess = pgTable(
+    'user_department_access',
+    {
+        id: uuid('id').primaryKey().defaultRandom(),
+        userId: text('user_id').notNull(),
+        departmentId: uuid('department_id')
+            .notNull()
+            .references(() => departments.id, { onDelete: 'cascade' }),
+        createdAt: timestamp('created_at').defaultNow().notNull(),
+    },
+    (table) => [
+        uniqueIndex('idx_user_dept_access_unique').on(table.userId, table.departmentId),
+        index('idx_user_dept_access_user').on(table.userId),
+        index('idx_user_dept_access_dept').on(table.departmentId),
+    ]
+);
+
 // Organization members (junction table with role)
 export const orgMembers = pgTable(
     'org_members',
@@ -108,6 +145,7 @@ export const documents = pgTable(
         id: uuid('id').primaryKey().defaultRandom(),
         userId: text('user_id').notNull(),
         orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
+        departmentId: uuid('department_id').references(() => departments.id, { onDelete: 'set null' }),
         filename: text('filename').notNull(),
         blobUrl: text('blob_url'),
         uploadDate: timestamp('upload_date').defaultNow().notNull(),
@@ -115,7 +153,10 @@ export const documents = pgTable(
         chunks: integer('chunks').default(0),
         textLength: integer('text_length').default(0),
     },
-    (table) => [index('idx_documents_org').on(table.orgId)]
+    (table) => [
+        index('idx_documents_org').on(table.orgId),
+        index('idx_documents_dept').on(table.departmentId),
+    ]
 );
 
 // Document embeddings for vector search
@@ -125,6 +166,7 @@ export const documentEmbeddings = pgTable(
         id: uuid('id').primaryKey().defaultRandom(),
         userId: text('user_id').notNull(),
         orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
+        departmentId: uuid('department_id').references(() => departments.id, { onDelete: 'cascade' }),
         documentId: uuid('document_id')
             .notNull()
             .references(() => documents.id, { onDelete: 'cascade' }),
@@ -136,6 +178,7 @@ export const documentEmbeddings = pgTable(
     (table) => [
         index('idx_embeddings_user').on(table.userId),
         index('idx_embeddings_org').on(table.orgId),
+        index('idx_embeddings_dept').on(table.departmentId),
         index('idx_embeddings_document').on(table.documentId),
     ]
 );
@@ -204,12 +247,18 @@ export const messages = pgTable(
     (table) => [index('idx_messages_conversation').on(table.conversationId)]
 );
 
-// User billing plans (stub for now)
-export const userPlans = pgTable('user_plans', {
+// Organization subscriptions for billing
+export const orgSubscriptions = pgTable('org_subscriptions', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: text('user_id').notNull().unique(),
-    plan: varchar('plan', { length: 50 }).default('free').notNull(),
-    status: varchar('status', { length: 50 }).default('active').notNull(),
+    orgId: uuid('org_id')
+        .notNull()
+        .unique()
+        .references(() => organizations.id, { onDelete: 'cascade' }),
+    plan: varchar('plan', { length: 50 }).default('free').notNull(), // 'free' | 'pro'
+    status: varchar('status', { length: 50 }).default('active').notNull(), // 'active' | 'past_due' | 'canceled'
+    stripeCustomerId: text('stripe_customer_id'),
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    currentPeriodEnd: timestamp('current_period_end'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -220,10 +269,12 @@ export const userPlans = pgTable('user_plans', {
 
 export const organizationsRelations = relations(organizations, ({ many, one }) => ({
     members: many(orgMembers),
+    departments: many(departments),
     documents: many(documents),
     embeddings: many(documentEmbeddings),
     settings: many(chatbotSettings),
     usageLogs: many(usageLogs),
+    subscription: one(orgSubscriptions),
     creator: one(users, { fields: [organizations.createdBy], references: [users.id] }),
 }));
 
@@ -238,18 +289,40 @@ export const orgMembersRelations = relations(orgMembers, ({ one }) => ({
     }),
 }));
 
+export const departmentsRelations = relations(departments, ({ many, one }) => ({
+    organization: one(organizations, {
+        fields: [departments.orgId],
+        references: [organizations.id],
+    }),
+    userAccess: many(userDepartmentAccess),
+    documents: many(documents),
+    embeddings: many(documentEmbeddings),
+}));
+
+export const userDepartmentAccessRelations = relations(userDepartmentAccess, ({ one }) => ({
+    user: one(users, {
+        fields: [userDepartmentAccess.userId],
+        references: [users.id],
+    }),
+    department: one(departments, {
+        fields: [userDepartmentAccess.departmentId],
+        references: [departments.id],
+    }),
+}));
+
 export const usersRelations = relations(users, ({ many, one }) => ({
     documents: many(documents),
     conversations: many(conversations),
     usageLogs: many(usageLogs),
     settings: many(chatbotSettings),
-    plan: one(userPlans),
     orgMemberships: many(orgMembers),
+    departmentAccess: many(userDepartmentAccess),
 }));
 
 export const documentsRelations = relations(documents, ({ one, many }) => ({
     user: one(users, { fields: [documents.userId], references: [users.id] }),
     organization: one(organizations, { fields: [documents.orgId], references: [organizations.id] }),
+    department: one(departments, { fields: [documents.departmentId], references: [departments.id] }),
     embeddings: many(documentEmbeddings),
 }));
 
@@ -267,6 +340,10 @@ export const documentEmbeddingsRelations = relations(
         organization: one(organizations, {
             fields: [documentEmbeddings.orgId],
             references: [organizations.id],
+        }),
+        department: one(departments, {
+            fields: [documentEmbeddings.departmentId],
+            references: [departments.id],
         }),
     })
 );
@@ -289,6 +366,9 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     }),
 }));
 
-export const userPlansRelations = relations(userPlans, ({ one }) => ({
-    user: one(users, { fields: [userPlans.userId], references: [users.id] }),
+export const orgSubscriptionsRelations = relations(orgSubscriptions, ({ one }) => ({
+    organization: one(organizations, {
+        fields: [orgSubscriptions.orgId],
+        references: [organizations.id],
+    }),
 }));

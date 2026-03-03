@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/neon';
 import { usageLogs, orgMembers, users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getUserOrgContext } from '@/lib/auth/utils';
 import { requireRole, ROLES } from '@/lib/auth/rbac';
 
@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
     try {
         const { userId, orgId, role } = await getUserOrgContext();
+        console.log(`[DEBUG] Usage API called for Org: ${orgId}, Role: ${role}`);
 
         if (!orgId) {
             return Response.json({
@@ -32,7 +33,7 @@ export async function GET() {
                 createdAt: usageLogs.createdAt,
             })
             .from(usageLogs)
-            .where(eq(usageLogs.orgId, orgId));
+            .where(sql`CAST(${usageLogs.orgId} AS TEXT) = ${orgId}::TEXT`);
 
         let lifetimeTokens = 0;
         let lifetimeRequests = 0;
@@ -80,8 +81,8 @@ export async function GET() {
                     email: users.email,
                 })
                 .from(orgMembers)
-                .innerJoin(users, eq(orgMembers.userId, users.id))
-                .where(eq(orgMembers.orgId, orgId));
+                .innerJoin(users, sql`${orgMembers.userId}::text = ${users.id}::text`)
+                .where(sql`CAST(${orgMembers.orgId} AS TEXT) = ${orgId}::TEXT`);
 
             const nameMap = Object.fromEntries(
                 members.map((m) => [m.userId, { name: m.name, email: m.email }])

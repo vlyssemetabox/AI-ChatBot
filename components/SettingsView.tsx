@@ -61,7 +61,17 @@ interface UsageStats {
     total_requests: number;
 }
 
-type Tab = 'guardrails' | 'branding' | 'models';
+interface BillingInfo {
+    plan: string;
+    status: string;
+    usage: {
+        total: number;
+        limit: number;
+        periodStart: string;
+    };
+}
+
+type Tab = 'guardrails' | 'branding' | 'models' | 'billing';
 
 // Extracted Component to prevent re-mounting on state changes
 const LogoInputSection = ({
@@ -178,19 +188,29 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
     const [isImportingLight, setIsImportingLight] = useState(false);
     const [isImportingDark, setIsImportingDark] = useState(false);
 
+    // Billing State
+    const [billing, setBilling] = useState<BillingInfo | null>(null);
+    const [loadingBilling, setLoadingBilling] = useState(false);
+    const [isUpgrading, setIsUpgrading] = useState(false);
+
     // Initial Fetch
     useEffect(() => {
         fetchSettings();
         if (isActive) {
             fetchUsage();
+            fetchBilling();
         }
     }, []);
 
     // Re-fetch usage when tab becomes active or polling
     useEffect(() => {
         if (isActive) {
-            fetchUsage();
-            const interval = setInterval(fetchUsage, 5000); // Poll every 5 seconds while active
+            //fetchUsage();
+            fetchBilling();
+            const interval = setInterval(() => {
+                fetchUsage();
+                fetchBilling();
+            }, 10000); // Poll every 10 seconds while active
             return () => clearInterval(interval);
         }
     }, [isActive]);
@@ -229,6 +249,40 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
             setLoadingUsage(false);
         }
     }
+
+    const fetchBilling = async () => {
+        setLoadingBilling(true);
+        try {
+            const res = await fetch('/api/billing');
+            if (res.ok) {
+                const data = await res.json();
+                setBilling(data);
+            }
+        } catch (e) {
+            console.error("Failed to fetch billing", e);
+        } finally {
+            setLoadingBilling(false);
+        }
+    }
+
+    const handleUpgrade = async () => {
+        setIsUpgrading(true);
+        try {
+            const res = await fetch('/api/billing/checkout', { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                alert(data.message || "Successfully upgraded!");
+                fetchBilling();
+            } else {
+                const err = await res.json();
+                alert(`Upgrade failed: ${err.error}`);
+            }
+        } catch (e) {
+            console.error("Upgrade error", e);
+        } finally {
+            setIsUpgrading(false);
+        }
+    };
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -388,16 +442,16 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
                     </Button>
 
                     <Button
-                        variant={activeTab === 'models' ? "default" : "ghost"}
-                        onClick={() => { setActiveTab('models'); if (window.innerWidth < 768) setCollapsed(true); }}
+                        variant={activeTab === 'billing' ? "default" : "ghost"}
+                        onClick={() => { setActiveTab('billing'); if (window.innerWidth < 768) setCollapsed(true); }}
                         className={cn(
                             "w-full justify-start gap-2 h-10",
                             collapsed ? "justify-center px-0" : "px-4"
                         )}
-                        title="Model & Usage"
+                        title="Billing & Subscription"
                     >
-                        <Activity className="w-4 h-4 flex-shrink-0" />
-                        {!collapsed && <span>Model & Usage</span>}
+                        <Zap className="w-4 h-4 flex-shrink-0" />
+                        {!collapsed && <span>Billing</span>}
                     </Button>
                 </div>
             </div>
@@ -648,20 +702,13 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                             <div>
                                 <h1 className="text-3xl font-bold tracking-tight">Model & Usage</h1>
-                                <p className="text-muted-foreground mt-2">Manage AI model selection and track your API usage.</p>
+                                <p className="text-muted-foreground mt-2">Manage AI model selection and track your daily API usage.</p>
                             </div>
                             <Button onClick={handleSave} disabled={isSaving} className="gap-2 w-full md:w-auto min-w-[120px]">
                                 {isSaving ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                 {isSaving ? 'Saving...' : 'Save Changes'}
                             </Button>
                         </div>
-
-                        {saveStatus === 'success' && (
-                            <div className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 p-4 rounded-lg flex items-center gap-2 mb-6 animate-in fade-in slide-in-from-top-2">
-                                <Shield className="w-5 h-5" />
-                                Settings saved successfully! Reloading...
-                            </div>
-                        )}
 
                         <div className="grid gap-6">
                             {/* Model Selection */}
@@ -711,15 +758,15 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
                                 </CardContent>
                             </Card>
 
-                            {/* Usage Stats */}
+                            {/* Usage Stats (Daily) */}
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <BarChart3 className="w-5 h-5 text-primary" />
-                                        Usage Statistics
+                                        Daily Usage Statistics
                                     </CardTitle>
                                     <CardDescription>
-                                        Track your API consumption against daily quotas.
+                                        Track your API consumption against daily quotas. Resets at 00:00 UTC.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
@@ -729,7 +776,6 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Daily Tokens */}
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="font-medium">Daily Token Usage</span>
@@ -741,12 +787,8 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
                                                         style={{ width: `${tokenPercent}%` }}
                                                     />
                                                 </div>
-                                                <p className="text-xs text-muted-foreground pt-1">
-                                                    Resets daily at 00:00 UTC.
-                                                </p>
                                             </div>
 
-                                            {/* Daily Requests */}
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="font-medium">Daily Requests</span>
@@ -762,7 +804,6 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
 
                                             <Separator />
 
-                                            {/* Lifetime Stats */}
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="p-4 bg-muted/20 rounded-lg border">
                                                     <p className="text-xs text-muted-foreground uppercase font-semibold">Total Lifetime Tokens</p>
@@ -781,6 +822,129 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
                         </div>
                     </div>
 
+                    {/* Billing Content */}
+                    <div className={activeTab === 'billing' ? 'block' : 'hidden'}>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                            <div>
+                                <h1 className="text-3xl font-bold tracking-tight">Billing & Subscription</h1>
+                                <p className="text-muted-foreground mt-2">Manage your organization's plan and token usage.</p>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-6">
+                            <Card className={cn(
+                                "border-2",
+                                billing?.plan === 'pro' ? "border-primary bg-primary/5" : "border-border"
+                            )}>
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <CardTitle className="text-2xl">
+                                                {billing?.plan === 'pro' ? 'Pro Plan' : 'Free Tier'}
+                                            </CardTitle>
+                                            <CardDescription className="mt-1">
+                                                {billing?.plan === 'pro'
+                                                    ? 'Unlimited access for your organization.'
+                                                    : 'Standard access with monthly token limits.'}
+                                            </CardDescription>
+                                        </div>
+                                        <div className={cn(
+                                            "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
+                                            billing?.plan === 'pro' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                        )}>
+                                            {billing?.status}
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    {billing?.plan === 'free' && (
+                                        <div className="space-y-4">
+                                            <div className="bg-background/50 p-4 rounded-lg border border-dashed border-primary/30">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <Zap className="w-5 h-5 text-primary" />
+                                                    <span className="font-semibold">Upgrade to Pro</span>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground mb-4">
+                                                    Remove the 50,000 token monthly limit and unlock advanced features for your entire team.
+                                                </p>
+                                                <Button onClick={handleUpgrade} disabled={isUpgrading} className="w-full sm:w-auto">
+                                                    {isUpgrading ? <RefreshCcw className="w-4 h-4 animate-spin mr-2" /> : <BarChart3 className="w-4 h-4 mr-2" />}
+                                                    Upgrade Now (Mock)
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {billing?.plan === 'pro' && (
+                                        <div className="flex items-center gap-2 text-primary font-medium">
+                                            <Shield className="w-5 h-5" />
+                                            <span>Your organization is on the Pro Plan. Enjoy!</span>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Activity className="w-5 h-5 text-primary" />
+                                        Monthly Token Usage (Org-wide)
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Calculated tokens consumed this calendar month across the entire organization.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    {loadingBilling && !billing ? (
+                                        <div className="flex justify-center py-8">
+                                            <RefreshCcw className="w-6 h-6 animate-spin text-muted-foreground" />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-end">
+                                                <div>
+                                                    <p className="text-3xl font-bold">{billing?.usage.total.toLocaleString() || 0}</p>
+                                                    <p className="text-sm text-muted-foreground">Tokens used this month</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-medium">Quota: {billing?.plan === 'pro' ? 'Unlimited' : '50,000'}</p>
+                                                    <p className="text-xs text-muted-foreground font-mono">
+                                                        Period: {billing ? new Date(billing.usage.periodStart).toLocaleDateString() : '-'}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {billing?.plan === 'free' && (
+                                                <div className="space-y-2">
+                                                    <div className="h-4 w-full bg-secondary rounded-full overflow-hidden border">
+                                                        <div
+                                                            className={cn(
+                                                                "h-full transition-all duration-1000",
+                                                                ((billing.usage.total / 50000) * 100) > 90 ? "bg-destructive" : "bg-primary"
+                                                            )}
+                                                            style={{ width: `${Math.min(100, (billing.usage.total / 50000) * 100)}%` }}
+                                                        />
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                                                        <span>0%</span>
+                                                        <span>{((billing.usage.total / 50000) * 100).toFixed(1)}%</span>
+                                                        <span>100%</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {billing?.plan === 'free' && ((billing.usage.total / 50000) * 100) > 80 && (
+                                                <div className="p-3 bg-destructive/10 text-destructive text-xs rounded-lg flex items-start gap-2">
+                                                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                                                    <p>You are approaching your monthly limit. Once reached, chat functions will be disabled until the next month or you upgrade to Pro.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                            <div className="h-20" />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

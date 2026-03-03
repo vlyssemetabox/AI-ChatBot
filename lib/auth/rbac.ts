@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/neon';
-import { orgMembers } from '@/lib/db/schema';
+import { orgMembers, departments, userDepartmentAccess } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 // ============================================================
@@ -74,6 +74,46 @@ export async function requireRole(
     }
 
     return membership;
+}
+
+/**
+ * Get an array of department IDs the user is authorized to access.
+ * Super Admins get all departments in the organization.
+ * Admins and Users get only the departments explicitly assigned in user_department_access.
+ */
+export async function getUserAuthorizedDepartments(userId: string, orgId: string): Promise<string[]> {
+    const membership = await getUserOrgMembership(userId);
+    if (!membership || membership.orgId !== orgId) {
+        return [];
+    }
+
+    if (membership.role === ROLES.SUPER_ADMIN) {
+        // Super Admin gets access to all departments in this org
+        const allDepts = await db
+            .select({ id: departments.id })
+            .from(departments)
+            .where(eq(departments.orgId, orgId));
+        return allDepts.map(d => d.id);
+    }
+
+    // Admins and regular Users get access only to the departments explicitly assigned to them
+    const assignedDepts = await db
+        .select({ departmentId: userDepartmentAccess.departmentId })
+        .from(userDepartmentAccess)
+        .where(eq(userDepartmentAccess.userId, userId));
+
+    return assignedDepts.map(d => d.departmentId);
+}
+
+/**
+ * Ensure the user has access to a specific department.
+ * Throws 403 Forbidden if the user is not allowed to query/access it.
+ */
+export async function requireDepartmentAccess(userId: string, orgId: string, targetDeptId: string): Promise<void> {
+    const authorizedDepts = await getUserAuthorizedDepartments(userId, orgId);
+    if (!authorizedDepts.includes(targetDeptId)) {
+        throw new Error('Forbidden: You do not have access to this department classification.');
+    }
 }
 
 /**

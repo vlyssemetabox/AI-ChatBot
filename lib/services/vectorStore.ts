@@ -99,6 +99,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
  */
 export async function addDocumentToVectorStore(
     scopeId: string,
+    departmentId: string,
     documentId: string,
     chunks: string[],
     metadata: Partial<DocumentMetadata> = {}
@@ -111,6 +112,7 @@ export async function addDocumentToVectorStore(
         await db.insert(documentEmbeddings).values({
             userId: scopeId,
             orgId: scopeId,
+            departmentId,
             documentId,
             chunkIndex: i,
             content: chunks[i],
@@ -135,10 +137,15 @@ export async function addDocumentToVectorStore(
  * scopeId = orgId (preferred) or userId for legacy data
  */
 export async function searchSimilarDocuments(
-    scopeId: string,
+    orgId: string,
+    allowedDepartmentIds: string[],
     query: string,
     topK = 10
 ): Promise<SearchResult[]> {
+    if (allowedDepartmentIds.length === 0) {
+        return [];
+    }
+
     // Generate embedding for the query
     const queryEmbedding = JINA_API_KEY
         ? await generateEmbeddingJinaAI(query, 'retrieval.query')
@@ -149,7 +156,10 @@ export async function searchSimilarDocuments(
     // Use raw SQL for pgvector cosine similarity search
     const embeddingStr = `[${queryEmbedding.join(',')}]`;
 
-    // Search by org_id first, fall back to user_id for legacy data
+    // Map department IDs correctly to SQL array elements
+    const deptSqlArray = sql.join(allowedDepartmentIds.map(id => sql`${id}::uuid`), sql`, `);
+
+    // Search strictly within authorized departments
     const results = await db.execute(sql`
         SELECT
             de.content,
@@ -157,7 +167,8 @@ export async function searchSimilarDocuments(
             1 - (de.embedding <=> ${embeddingStr}::vector) AS similarity
         FROM document_embeddings de
         WHERE de.embedding IS NOT NULL
-          AND (de.org_id = ${scopeId}::uuid OR de.user_id = ${scopeId})
+          AND de.org_id = ${orgId}::uuid
+          AND de.department_id IN (${deptSqlArray})
         ORDER BY de.embedding <=> ${embeddingStr}::vector
         LIMIT ${topK}
     `);

@@ -1,83 +1,53 @@
-# Checkpoint: Phase 8.5 Complete — Org Lifecycle & Public Landing Page
+# Checkpoint: Phase 10 Complete — Billing, Metering & UI Stability
 
-Sherlock is a fully functional multi-tenant SaaS with organization lifecycle management, RBAC, and a public landing page.
+Sherlock now implements organization-level metering, a mock billing dashboard, and critical UI/UX fixes for accessibility and database compatibility.
 
 ### Build Status
-- ✅ `npm run build` — **0 errors**, 15 API routes, 10 pages
-- ✅ Phases 1–6 and 8 complete
-- ✅ Phase 8.5: Org quit/destroy + middleware fix + password reset fix + Excel support + Branding polish
+- ✅ `npm run build` — **0 errors**
+- ✅ Phases 1–9 complete
+- ✅ Phase 10: Billing Stub, Context Metering & UUID Standardisation
 
-### What Was Built in Phase 8.5
+### What Was Built in Phase 10
 
-**Middleware Fix**
-- Updated `middleware.ts` matcher: only `/dashboard/:path*` and `/api/((?!auth).*)` are protected
-- Landing page `/` and `/auth/*` are now publicly accessible without login
+**1. Billing & Subscription Engine**
+- Shifted from user-based plans to **Organization-centric subscriptions** (`orgSubscriptions`).
+- Implemented monthly usage tracking (resetting on the 1st of each month).
+- Enforced a **50,000 token limit** for Free-tier organizations.
+- Added a `402 Payment Required` block in the Chat API when limits are exceeded.
 
-**Org Leave** — `POST /api/organizations/leave`
-- Normal Users and Admins can leave their organization
-- Super Admins blocked (must use destroy instead)
-- UI: "Leave Organization" button in Team tab with confirmation dialog
+**2. Billing Dashboard (Mock)**
+- Added a "Billing" tab in Settings (Admin/Super Admin only).
+- Visual progress bar showing real-time token consumption.
+- Mock "Upgrade Now" flow that transitions organizations to the 'pro' plan instantly.
 
-**Org Destroy** — `DELETE /api/organizations`
-- Super Admin only — cascade deletes all org data:
-  1. Vercel Blob files for each document
-  2. `document_embeddings` → `documents` → `chatbot_settings` → `usage_logs` → `org_members` → `organizations`
-- UI: Red "Danger Zone" card requiring typed org name to confirm
+**3. Database & Type Safety**
+- Resolved the critical `operator does not exist: text = uuid` error.
+- Standardised all organization-id and user-id comparisons using explicit `CAST(column AS TEXT)` logic across all API routes.
+- Ensured join conditions in `orgMembers` uses robust text-based matching.
 
-**Password Reset Fix**
-- `forgot-password`: Changed from `authClient.forgetPassword()` → `authClient.requestPasswordReset()`
-- `reset-password`: Now passes URL `token` to `authClient.resetPassword({ newPassword, token })`
+**4. UI/UX & Accessibility**
+- **Dark Mode Stability**: Fixed a critical bug where input fields remained white in dark mode, rendering white text invisible. 
+- Refined `--input-background` tokens using `oklch` for consistent premium aesthetics.
+- Standardised the `Input` component to remove conflicting ad-hoc dark utilities.
 
-**Excel Support & Branding**
-- Added text extraction for `.xlsx` and `.xls` documents via the `xlsx` library and updated frontend drop zone validation
-- Replaced the global `Sparkles` logo with the `Search` icon for better product alignment
-
-### Access Control Matrix
+### Access Control Matrix (Updated)
 | Feature | Normal User | Admin | Super Admin |
 |---------|-------------|-------|-------------|
-| Chat | ✅ | ✅ | ✅ |
-| View documents | ✅ | ✅ | ✅ |
-| Upload/delete docs | ❌ | ✅ | ✅ |
-| View team members | ❌ | ✅ | ✅ |
-| Change roles | ❌ | ❌ | ✅ |
-| Remove members | ❌ | ❌ | ✅ |
-| Edit settings | ❌ | ❌ | ✅ |
-| Leave org | ✅ | ✅ | ❌ |
-| Destroy org | ❌ | ❌ | ✅ |
+| Chat (Scoped to Depts) | ✅ | ✅ | ✅ |
+| Billing Dashboard | ❌ | ✅ | ✅ |
+| Upgrade Plan (Mock) | ❌ | ❌ | ✅ |
+| View Usage Stats | ❌ | ✅ | ✅ |
+| Manage Member Dept Access | ❌ | ❌ | ✅ |
 
-### API Routes (15)
-```
-/api/auth/[...path]        — Neon Auth handler
-/api/chat                  — RAG chat (orgId-scoped search)
-/api/conversations         — List/create conversations
-/api/conversations/[id]    — Get/delete conversation
-/api/conversations/[id]/messages — Get messages
-/api/documents             — GET (org-scoped) / POST (Admin+)
-/api/documents/[id]        — DELETE (Admin+)
-/api/organizations         — GET/POST/DELETE (create/get/destroy)
-/api/organizations/join    — POST (join via code)
-/api/organizations/leave   — POST (quit org)
-/api/organizations/members — GET/PATCH/DELETE (manage members)
-/api/settings              — GET (all) / POST (Super Admin)
-/api/usage                 — GET (org-scoped stats)
-/api/utils/fetch-image     — Image proxy for branding
-```
-
-### Key File Structure
-```
-middleware.ts               — Route protection (dashboard + API only)
-lib/auth/rbac.ts            — RBAC roles, hierarchy, membership lookup
-lib/auth/utils.ts           — getUserId(), getUserOrgContext()
-lib/db/schema.ts            — Drizzle ORM schema (13 tables)
-lib/services/vectorStore.ts — RAG embeddings (org-scoped)
-components/OrgSetup.tsx     — Create/join organization
-components/OrgMembersView.tsx — Members + Leave + Destroy
-components/DocumentsView.tsx — Document library (canManage prop)
-app/page.tsx                — Public landing page
-app/dashboard/page.tsx      — Role-gated dashboard
+### Key API Routes
+```text
+/api/billing                      — Get subscription status and usage
+/api/billing/checkout             — Mock plan upgrade (Super Admin only)
+/api/usage                        — Per-user breakdown (Admin only)
+/api/chat                         — Now includes 402 Metering check
 ```
 
 ### Next Steps
-1. Deploy to Vercel
-2. E2E test all org flows
-3. Phase 7: Billing Stub & Context Metering
+1. Actual Payment Gateway Integration (Stripe/Peach Payments)
+2. Invoice generation and PDF exports
+3. Granular chat history persistence (Phase 6)

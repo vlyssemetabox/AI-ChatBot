@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/neon';
-import { orgMembers, users } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { orgMembers, users, userDepartmentAccess } from '@/lib/db/schema';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { getUserId } from '@/lib/auth/utils';
 import { requireRole, isValidRole, ROLES, type Role } from '@/lib/auth/rbac';
 
@@ -29,9 +29,29 @@ export async function GET() {
             })
             .from(orgMembers)
             .innerJoin(users, sql`${orgMembers.userId}::uuid = ${users.id}`)
-            .where(eq(orgMembers.orgId, orgId));
+            .where(eq(orgMembers.orgId, sql`${orgId}::uuid`));
 
-        return Response.json({ members });
+        const userIds = members.map(m => m.userId);
+
+        let accessMappings: any[] = [];
+        if (userIds.length > 0) {
+            accessMappings = await db
+                .select({
+                    userId: userDepartmentAccess.userId,
+                    departmentId: userDepartmentAccess.departmentId
+                })
+                .from(userDepartmentAccess)
+                .where(inArray(userDepartmentAccess.userId, userIds));
+        }
+
+        const membersWithAccess = members.map(m => ({
+            ...m,
+            authorizedDepartmentIds: accessMappings
+                .filter(a => a.userId === m.userId)
+                .map(a => a.departmentId)
+        }));
+
+        return Response.json({ members: membersWithAccess });
     } catch (error: any) {
         console.error('List members error:', error);
         if (error.message.includes('Unauthorized')) {
@@ -77,7 +97,7 @@ export async function PATCH(req: NextRequest) {
             .where(
                 and(
                     eq(orgMembers.id, memberId),
-                    eq(orgMembers.orgId, orgId)
+                    eq(orgMembers.orgId, sql`${orgId}::uuid`)
                 )
             )
             .limit(1);
@@ -135,7 +155,7 @@ export async function DELETE(req: NextRequest) {
             .where(
                 and(
                     eq(orgMembers.id, memberId),
-                    eq(orgMembers.orgId, orgId)
+                    eq(orgMembers.orgId, sql`${orgId}::uuid`)
                 )
             )
             .limit(1);

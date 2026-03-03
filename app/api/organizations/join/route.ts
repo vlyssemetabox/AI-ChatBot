@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/neon';
-import { organizations, orgMembers } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { organizations, orgMembers, departments, userDepartmentAccess } from '@/lib/db/schema';
+import { eq, asc } from 'drizzle-orm';
 import { getUserId } from '@/lib/auth/utils';
 import { getUserOrgMembership, ROLES } from '@/lib/auth/rbac';
 
@@ -52,6 +52,21 @@ export async function POST(req: Request) {
             userId,
             role: ROLES.USER,
         });
+
+        // Find the oldest department to auto-assign the user to default context
+        const [firstDept] = await db
+            .select({ id: departments.id })
+            .from(departments)
+            .where(eq(departments.orgId, org.id))
+            .orderBy(asc(departments.createdAt))
+            .limit(1);
+
+        if (firstDept) {
+            await db.insert(userDepartmentAccess).values({
+                userId,
+                departmentId: firstDept.id,
+            }).onConflictDoNothing();
+        }
 
         return Response.json({
             organization: org,

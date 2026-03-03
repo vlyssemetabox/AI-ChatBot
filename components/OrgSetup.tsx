@@ -12,8 +12,9 @@ interface OrgSetupProps {
 }
 
 export function OrgSetup({ onComplete }: OrgSetupProps) {
-    const [mode, setMode] = useState<'choose' | 'create' | 'join'>('choose');
+    const [mode, setMode] = useState<'choose' | 'create' | 'join' | 'create_department' | 'success'>('choose');
     const [orgName, setOrgName] = useState('');
+    const [deptName, setDeptName] = useState('');
     const [orgCode, setOrgCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -38,7 +39,32 @@ export function OrgSetup({ onComplete }: OrgSetupProps) {
             if (!res.ok) throw new Error(data.error || 'Failed to create organization');
 
             setCreatedCode(data.organization.orgCode);
-            setMode('choose'); // Will show success screen
+            setMode('create_department');
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCreateDepartment = async () => {
+        if (!deptName.trim() || deptName.trim().length < 2) {
+            setError('Department name must be at least 2 characters');
+            return;
+        }
+        setIsLoading(true);
+        setError('');
+
+        try {
+            const res = await fetch('/api/departments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: deptName.trim(), icon: 'folder' }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to create department');
+
+            setMode('success');
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -78,7 +104,7 @@ export function OrgSetup({ onComplete }: OrgSetupProps) {
     };
 
     // Success screen after creating
-    if (createdCode) {
+    if (mode === 'success' && createdCode) {
         return (
             <div className="h-[100dvh] flex items-center justify-center bg-background p-4">
                 <Card className="max-w-md w-full p-8 space-y-6 text-center">
@@ -177,7 +203,33 @@ export function OrgSetup({ onComplete }: OrgSetupProps) {
                             </Button>
                             <Button onClick={handleCreate} disabled={isLoading} className="flex-1 gap-2">
                                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Building2 className="w-4 h-4" />}
-                                Create Organization
+                                Next
+                            </Button>
+                        </div>
+                    </Card>
+                )}
+
+                {mode === 'create_department' && (
+                    <Card className="p-6 max-w-md mx-auto space-y-4 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                        <div className="space-y-2">
+                            <div className="flex flex-col space-y-1 mb-4">
+                                <h3 className="text-xl font-bold">First Department</h3>
+                                <p className="text-sm text-muted-foreground">Before inviting the team, create an initial department scope.</p>
+                            </div>
+                            <Label htmlFor="dept-name">Department Name</Label>
+                            <Input
+                                id="dept-name"
+                                placeholder="e.g. General, Engineering, HR"
+                                value={deptName}
+                                onChange={(e) => setDeptName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleCreateDepartment()}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            <Button onClick={handleCreateDepartment} disabled={isLoading} className="w-full gap-2 mt-4">
+                                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                                Finalize Setup
                             </Button>
                         </div>
                     </Card>
