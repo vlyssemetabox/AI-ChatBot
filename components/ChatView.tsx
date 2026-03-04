@@ -212,7 +212,7 @@ export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, f
                             <img
                                 src="/logo.png"
                                 alt="Default Logo"
-                                className="w-24 h-24 md:w-32 md:h-32 object-contain animate-in fade-in zoom-in duration-500"
+                                className="w-24 h-24 md:w-32 md:h-32 object-contain animate-in fade-in zoom-in duration-500 dark:bg-white dark:p-4 dark:rounded-[2rem]"
                             />
                         )}
                     </div>
@@ -245,7 +245,7 @@ export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, f
                                 className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                                 {message.role === 'assistant' && (
-                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden p-1">
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden p-1 dark:bg-white dark:p-0.5">
                                         <img src="/logo.png" alt="Assistant" className="w-full h-full object-contain" />
                                     </div>
                                 )}
@@ -316,7 +316,7 @@ export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, f
                         ))}
                         {isLoading && (
                             <div className="flex gap-3 justify-start">
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden p-1">
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden p-1 dark:bg-white dark:p-0.5">
                                     <img src="/logo.png" alt="Assistant" className="w-full h-full object-contain" />
                                 </div>
                                 <Card className="p-4 bg-muted/50 border-0">

@@ -135,7 +135,7 @@ export function OrgSetup({ onComplete }: OrgSetupProps) {
         <div className="h-[100dvh] flex items-center justify-center bg-background p-4">
             <div className="max-w-2xl w-full space-y-8">
                 <div className="text-center space-y-2 pb-4">
-                    <img src="/logo-with-letter.png" alt="Sherlock Logo" className="h-14 w-auto mx-auto mb-4" />
+                    <img src="/logo-with-letter.png" alt="Sherlock Logo" className="h-14 w-auto mx-auto mb-4 dark:bg-white dark:p-3 dark:rounded-2xl" />
                     <p className="text-muted-foreground text-lg">
                         {mode === 'choose'
                             ? 'Create or join an organization to get started'
