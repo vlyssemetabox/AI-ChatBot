@@ -209,9 +209,11 @@ export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, f
                                 )}
                             </>
                         ) : (
-                            <div className="bg-primary/10 p-6 rounded-3xl animate-in fade-in zoom-in duration-500">
-                                <Search className="w-16 h-16 text-primary" />
-                            </div>
+                            <img
+                                src="/logo.png"
+                                alt="Default Logo"
+                                className="w-24 h-24 md:w-32 md:h-32 object-contain animate-in fade-in zoom-in duration-500"
+                            />
                         )}
                     </div>
                     <div className="text-center space-y-2">
@@ -243,8 +245,8 @@ export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, f
                                 className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                                 {message.role === 'assistant' && (
-                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                                        <Bot className="w-5 h-5 text-primary" />
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden p-1">
+                                        <img src="/logo.png" alt="Assistant" className="w-full h-full object-contain" />
                                     </div>
                                 )}
 
@@ -314,8 +316,8 @@ export function ChatView({ companyName = "AI Assistant", logoUrl, logoDarkUrl, f
                         ))}
                         {isLoading && (
                             <div className="flex gap-3 justify-start">
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                    <Bot className="w-5 h-5 text-primary" />
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden p-1">
+                                    <img src="/logo.png" alt="Assistant" className="w-full h-full object-contain" />
                                 </div>
                                 <Card className="p-4 bg-muted/50 border-0">
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
