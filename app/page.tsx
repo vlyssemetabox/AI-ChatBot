@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Search, FileSearch, Shield, MessageSquare, Upload, Brain, Zap, ArrowRight, ChevronRight, Users, Building2 } from 'lucide-react';
+import { Search, FileSearch, Shield, MessageSquare, Upload, Brain, Zap, ArrowRight, ChevronRight, Users, Building2, LogIn, UserPlus } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 const features = [
@@ -62,16 +62,18 @@ export default function LandingPage() {
                         <ThemeToggle />
                         <Link
                             href="/auth/login"
-                            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                            className="flex items-center justify-center p-2 sm:p-0 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                         >
-                            Sign in
+                            <LogIn className="w-5 h-5 sm:hidden" />
+                            <span className="hidden sm:inline">Sign in</span>
                         </Link>
                         <Link
                             href="/auth/signup"
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
                         >
-                            Get Started
-                            <ArrowRight className="w-3.5 h-3.5" />
+                            <UserPlus className="w-5 h-5 sm:hidden" />
+                            <span className="hidden sm:inline">Get Started</span>
+                            <ArrowRight className="hidden sm:inline-block w-3.5 h-3.5" />
                         </Link>
                     </div>
                 </div>
@@ -108,14 +110,14 @@ export default function LandingPage() {
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Link
                                 href="/auth/signup"
-                                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium text-base hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
+                                className="inline-flex w-full sm:w-auto justify-center items-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium text-base hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
                             >
                                 Start for Free
                                 <ArrowRight className="w-4 h-4" />
                             </Link>
                             <a
                                 href="#how-it-works"
-                                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl border border-border font-medium text-base hover:bg-muted/50 transition-colors"
+                                className="inline-flex w-full sm:w-auto justify-center items-center gap-2 px-8 py-3.5 rounded-xl border border-border font-medium text-base hover:bg-muted/50 transition-colors"
                             >
                                 See how it works
                                 <ChevronRight className="w-4 h-4" />
@@ -189,7 +191,7 @@ export default function LandingPage() {
                     </p>
                     <Link
                         href="/auth/signup"
-                        className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium text-base hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
+                        className="inline-flex w-full sm:w-auto justify-center items-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium text-base hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
                     >
                         Get Started for Free
                         <ArrowRight className="w-4 h-4" />
