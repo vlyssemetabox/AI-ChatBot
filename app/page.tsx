@@ -49,9 +49,7 @@ export default function LandingPage() {
             <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
                 <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-16">
                     <div className="flex items-center gap-2">
-                        <div className="bg-primary/10 p-2 rounded-xl">
-                            <Search className="w-5 h-5 text-primary" />
-                        </div>
+                        <img src="/logo.png" alt="Sherlock Logo" className="w-8 h-8 object-contain" />
                         <span className="text-lg font-bold">Sherlock</span>
                     </div>
                     <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
@@ -204,9 +202,7 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
-                            <div className="bg-primary/10 p-1.5 rounded-lg">
-                                <Search className="w-4 h-4 text-primary" />
-                            </div>
+                            <img src="/logo.png" alt="Sherlock Logo" className="w-6 h-6 object-contain" />
                             <span className="font-semibold">Sherlock</span>
                         </div>
                         <p className="text-sm text-muted-foreground">

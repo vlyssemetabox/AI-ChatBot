@@ -57,11 +57,8 @@ export default function LoginPage() {
         <div className="space-y-6">
             {/* Header */}
             <div className="text-center space-y-2">
-                <Link href="/" className="inline-flex items-center gap-2 mb-4 group">
-                    <div className="bg-primary/10 p-2.5 rounded-xl group-hover:bg-primary/20 transition-colors">
-                        <Search className="w-6 h-6 text-primary" />
-                    </div>
-                    <span className="text-xl font-bold text-foreground">Sherlock</span>
+                <Link href="/" className="inline-block mb-4 hover:opacity-90 transition-opacity">
+                    <img src="/logo-with-letter.png" alt="Sherlock Logo" className="h-12 w-auto mx-auto" />
                 </Link>
                 <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
                 <p className="text-muted-foreground text-sm">

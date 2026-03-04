@@ -5,6 +5,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 export const metadata: Metadata = {
     title: 'Sherlock — AI Document Assistant',
     description: 'AI-powered RAG chatbot that reads your documents and answers questions with source citations.',
+    icons: {
+        icon: '/logo.png',
+    },
 };
 
 export default function RootLayout({

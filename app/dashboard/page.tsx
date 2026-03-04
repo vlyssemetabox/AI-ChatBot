@@ -165,9 +165,7 @@ export default function DashboardPage() {
                                 )}
                             </>
                         ) : (
-                            <div className="bg-primary/10 p-2 rounded-lg">
-                                <Search className="w-5 h-5 text-primary" />
-                            </div>
+                            <img src="/logo.png" alt="Sherlock Logo" className="h-8 md:h-9 object-contain" />
                         )}
 
                         <span className="text-lg font-semibold hidden md:inline-block ml-2 text-foreground">
