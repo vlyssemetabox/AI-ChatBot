@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MessageSquare, Settings, Search, Loader2, LogOut, FileText, Users } from 'lucide-react';
+import { MessageSquare, Settings, Search, Loader2, LogOut, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ChatView } from '@/components/ChatView';
@@ -9,10 +9,8 @@ import { SettingsView } from '@/components/SettingsView';
 import { DocumentsView } from '@/components/DocumentsView';
 import { ConversationSidebar } from '@/components/ConversationSidebar';
 import { OrgSetup } from '@/components/OrgSetup';
-import { OrgMembersView } from '@/components/OrgMembersView';
 import { authClient } from '@/lib/auth/client';
-
-type View = 'chat' | 'settings' | 'documents' | 'members';
+type View = 'chat' | 'settings' | 'documents';
 
 interface BrandingSettings {
     company_name?: string;
@@ -212,16 +210,7 @@ export default function DashboardPage() {
                             </Button>
                         )}
 
-                        {/* Members tab — visible to all members (actions restricted inside) */}
-                        <Button
-                            variant={currentView === 'members' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setCurrentView('members')}
-                            className="gap-2 transition-all"
-                        >
-                            <Users className="w-4 h-4" />
-                            <span className="hidden sm:inline">Team</span>
-                        </Button>
+
 
                         <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
 
@@ -265,14 +254,13 @@ export default function DashboardPage() {
                         <DocumentsView canManage={isAdmin} />
                     </div>
                     <div className={currentView === 'settings' ? 'block h-full' : 'hidden'}>
-                        {isSuperAdmin && <SettingsView isActive={currentView === 'settings'} />}
-                    </div>
-                    <div className={currentView === 'members' ? 'block h-full overflow-auto p-4 md:p-6 max-w-4xl mx-auto w-full' : 'hidden'}>
-                        <OrgMembersView
+                        {isSuperAdmin && <SettingsView
+                            isActive={currentView === 'settings'}
                             role={role || 'user'}
                             orgCode={isSuperAdmin ? orgData.organization?.orgCode : undefined}
                             orgName={orgData.organization?.name}
-                        />
+                            creatorId={orgData.organization?.createdBy}
+                        />}
                     </div>
                 </div>
             </main>

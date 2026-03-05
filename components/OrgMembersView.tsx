@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Copy, Check, Loader2, Shield, ShieldCheck, User, UserMinus, LogOut, Trash2, FolderLock, Pencil, Plus } from 'lucide-react';
+import { Copy, Check, Loader2, Shield, ShieldCheck, User, UserMinus, LogOut, Trash2, FolderLock, Pencil, Plus, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -63,6 +63,7 @@ interface OrgMembersViewProps {
     role: string;
     orgCode?: string;
     orgName?: string;
+    creatorId?: string;
 }
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; icon: typeof Shield }> = {
@@ -71,7 +72,7 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; icon: typeof S
     user: { label: 'User', color: 'bg-muted text-muted-foreground border-border', icon: User },
 };
 
-export function OrgMembersView({ role, orgCode, orgName }: OrgMembersViewProps) {
+export function OrgMembersView({ role, orgCode, orgName, creatorId }: OrgMembersViewProps) {
     const [members, setMembers] = useState<Member[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -308,13 +309,21 @@ export function OrgMembersView({ role, orgCode, orgName }: OrgMembersViewProps) 
                                         return (
                                             <TableRow key={member.id}>
                                                 <TableCell>
-                                                    <div>
-                                                        <p className="font-medium text-foreground">{member.name}</p>
-                                                        <p className="text-xs text-muted-foreground">{member.email}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <div>
+                                                            <p className="font-medium text-foreground">{member.name}</p>
+                                                            <p className="text-xs text-muted-foreground">{member.email}</p>
+                                                        </div>
+                                                        {member.userId === creatorId && (
+                                                            <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] px-1.5 py-0.5">
+                                                                <Crown className="w-3 h-3" />
+                                                                Creator
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    {isSuperAdmin && member.role !== 'super_admin' ? (
+                                                    {isSuperAdmin && member.userId !== creatorId ? (
                                                         <Select
                                                             value={member.role}
                                                             onValueChange={(val) => changeRole(member.id, val)}
@@ -376,7 +385,7 @@ export function OrgMembersView({ role, orgCode, orgName }: OrgMembersViewProps) 
                                                 </TableCell>
                                                 {isSuperAdmin && (
                                                     <TableCell className="text-right">
-                                                        {member.role !== 'super_admin' && (
+                                                        {member.userId !== creatorId && (
                                                             <AlertDialog>
                                                                 <AlertDialogTrigger asChild>
                                                                     <Button

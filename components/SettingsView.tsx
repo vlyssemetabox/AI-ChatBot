@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Plus, X, Shield, AlertTriangle, MessageSquare, RefreshCcw, Palette, ChevronLeft, ChevronRight, FileText, Building, Upload, Link as LinkIcon, Download, HelpCircle, Activity, Zap, BarChart3, Cloud } from 'lucide-react';
+import { Save, Plus, X, Shield, AlertTriangle, MessageSquare, RefreshCcw, Palette, ChevronLeft, ChevronRight, FileText, Building, Upload, Link as LinkIcon, Download, HelpCircle, Activity, Zap, BarChart3, Cloud, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
+import { OrgMembersView } from '@/components/OrgMembersView';
 
 interface SettingsState {
     competitors: string[];
@@ -71,7 +72,7 @@ interface BillingInfo {
     };
 }
 
-type Tab = 'guardrails' | 'branding' | 'models' | 'billing';
+type Tab = 'guardrails' | 'branding' | 'models' | 'billing' | 'team';
 
 // Extracted Component to prevent re-mounting on state changes
 const LogoInputSection = ({
@@ -165,7 +166,13 @@ const LogoInputSection = ({
     </div>
 );
 
-export function SettingsView({ isActive = false }: { isActive?: boolean }) {
+export function SettingsView({ isActive = false, role, orgCode, orgName, creatorId }: {
+    isActive?: boolean;
+    role?: string;
+    orgCode?: string;
+    orgName?: string;
+    creatorId?: string;
+}) {
     // Layout State
     const [activeTab, setActiveTab] = useState<Tab>('guardrails');
     const [collapsed, setCollapsed] = useState(true);
@@ -452,6 +459,19 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
                     >
                         <Zap className="w-4 h-4 flex-shrink-0" />
                         {!collapsed && <span>Billing</span>}
+                    </Button>
+
+                    <Button
+                        variant={activeTab === 'team' ? "default" : "ghost"}
+                        onClick={() => { setActiveTab('team'); if (window.innerWidth < 768) setCollapsed(true); }}
+                        className={cn(
+                            "w-full justify-start gap-2 h-10",
+                            collapsed ? "justify-center px-0" : "px-4"
+                        )}
+                        title="Team Management"
+                    >
+                        <Users className="w-4 h-4 flex-shrink-0" />
+                        {!collapsed && <span>Team</span>}
                     </Button>
                 </div>
             </div>
@@ -945,6 +965,21 @@ export function SettingsView({ isActive = false }: { isActive?: boolean }) {
                             <div className="h-20" />
                         </div>
                     </div>
+
+                    {/* Team Content */}
+                    <div className={activeTab === 'team' ? 'block' : 'hidden'}>
+                        <div className="mb-8">
+                            <h1 className="text-3xl font-bold tracking-tight">Team Management</h1>
+                            <p className="text-muted-foreground mt-2">Manage your organization members, roles, and departments.</p>
+                        </div>
+                        <OrgMembersView
+                            role={role || 'user'}
+                            orgCode={orgCode}
+                            orgName={orgName}
+                            creatorId={creatorId}
+                        />
+                    </div>
+
                 </div>
             </div>
         </div>

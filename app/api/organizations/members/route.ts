@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/neon';
-import { orgMembers, users, userDepartmentAccess } from '@/lib/db/schema';
+import { orgMembers, users, userDepartmentAccess, organizations } from '@/lib/db/schema';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { getUserId } from '@/lib/auth/utils';
 import { requireRole, isValidRole, ROLES, type Role } from '@/lib/auth/rbac';
@@ -111,6 +111,20 @@ export async function PATCH(req: NextRequest) {
             return Response.json(
                 { error: 'You cannot change your own role' },
                 { status: 400 }
+            );
+        }
+
+        // Prevent changing the org creator's role
+        const [org] = await db
+            .select({ createdBy: organizations.createdBy })
+            .from(organizations)
+            .where(eq(organizations.id, sql`${orgId}::uuid`))
+            .limit(1);
+
+        if (org && target.userId === org.createdBy) {
+            return Response.json(
+                { error: 'Cannot change the organization creator\'s role' },
+                { status: 403 }
             );
         }
 
