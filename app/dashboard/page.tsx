@@ -247,7 +247,7 @@ export default function DashboardPage() {
                         triggerRefresh={triggerRefresh}
                     />
                 )}
-                <div className="flex-1 min-w-0 h-full">
+                <div className="flex-1 min-w-0 h-full overflow-hidden">
                     <div className={currentView === 'chat' ? 'block h-full' : 'hidden'}>
                         <ChatView
                             companyName={branding.company_name}
