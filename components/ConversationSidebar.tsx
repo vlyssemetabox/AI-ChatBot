@@ -31,6 +31,9 @@ export function ConversationSidebar({ activeId, onSelect, triggerRefresh }: Conv
     const [editTitle, setEditTitle] = useState('');
     const editInputRef = useRef<HTMLInputElement>(null);
 
+    const truncateTitle = (title: string, maxLen = 22) =>
+        title.length > maxLen ? title.substring(0, maxLen) + '…' : title;
+
     const fetchConversations = async () => {
         setIsLoading(true);
         try {
@@ -123,8 +126,8 @@ export function ConversationSidebar({ activeId, onSelect, triggerRefresh }: Conv
                 </Button>
             </div>
 
-            <ScrollArea className="flex-1 min-h-0">
-                <div className="p-2">
+            <ScrollArea className="flex-1 min-h-0 overflow-hidden">
+                <div className="p-2 w-full overflow-hidden">
                     {isLoading ? (
                         <div className="flex justify-center p-4">
                             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -139,14 +142,14 @@ export function ConversationSidebar({ activeId, onSelect, triggerRefresh }: Conv
                                 <div
                                     key={conv.id}
                                     onClick={() => editingId !== conv.id && onSelect(conv.id)}
-                                    className={`flex items-center justify-between group p-2 rounded-md cursor-pointer transition-colors text-sm ${activeId === conv.id
+                                    className={`flex items-center justify-between group p-2 rounded-md cursor-pointer transition-colors text-sm max-w-full overflow-hidden ${activeId === conv.id
                                         ? 'bg-primary/10 text-primary font-medium'
                                         : 'hover:bg-muted text-foreground'
                                         }`}
                                 >
-                                    <div className="flex items-center gap-2 overflow-hidden min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 min-w-0" style={{ maxWidth: 'calc(100% - 28px)' }}>
                                         <MessageSquare className={`w-4 h-4 shrink-0 ${activeId === conv.id ? 'text-primary' : 'text-muted-foreground'}`} />
-                                        <div className="flex flex-col overflow-hidden min-w-0 flex-1">
+                                        <div className="flex flex-col" style={{ maxWidth: 'calc(100% - 24px)' }}>
                                             {editingId === conv.id ? (
                                                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                                     <input
@@ -169,7 +172,7 @@ export function ConversationSidebar({ activeId, onSelect, triggerRefresh }: Conv
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <span className="truncate">{conv.title}</span>
+                                                    <span className="block text-sm leading-tight">{truncateTitle(conv.title)}</span>
                                                     <span className="text-[10px] text-muted-foreground truncate">
                                                         {formatDistanceToNow(new Date(conv.updatedAt), { addSuffix: true })}
                                                     </span>
