@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from "@/components/theme-provider";
+import { PostHogProvider } from "@/components/posthog-provider";
 
 export const metadata: Metadata = {
     title: 'Sherlock — AI Document Assistant',
@@ -18,14 +19,16 @@ export default function RootLayout({
     return (
         <html lang="en" suppressHydrationWarning>
             <body>
-                <ThemeProvider
-                    attribute="class"
-                    defaultTheme="system"
-                    enableSystem
-                    disableTransitionOnChange
-                >
-                    {children}
-                </ThemeProvider>
+                <PostHogProvider>
+                    <ThemeProvider
+                        attribute="class"
+                        defaultTheme="system"
+                        enableSystem
+                        disableTransitionOnChange
+                    >
+                        {children}
+                    </ThemeProvider>
+                </PostHogProvider>
             </body>
         </html>
     );
