@@ -94,9 +94,9 @@ export default function LandingPage() {
                         </div>
 
                         <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
-                            Sherlock.{' '}
+                            Transforming.{' '}
                             <span className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
-                                Transforming information into decisive action.
+                                information into decisive action.
                             </span>
                         </h1>
 
