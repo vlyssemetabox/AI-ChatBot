@@ -230,9 +230,9 @@ export function SettingsView({ isActive = false, role, orgCode, orgName, creator
                 setSettings(prev => ({
                     ...prev,
                     ...data,
-                    // Ensure nested specific merge if needed
                     messages: { ...prev.messages, ...data.messages },
-                    model_config: data.model_config || prev.model_config // Use separate key if available or flat
+                    branding: { ...prev.branding, ...data.branding },
+                    model_config: data.model_config || prev.model_config
                 }));
             }
         } catch (error) {
@@ -446,6 +446,19 @@ export function SettingsView({ isActive = false, role, orgCode, orgName, creator
                     >
                         <Building className="w-4 h-4 flex-shrink-0" />
                         {!collapsed && <span>Branding</span>}
+                    </Button>
+
+                    <Button
+                        variant={activeTab === 'models' ? "default" : "ghost"}
+                        onClick={() => { setActiveTab('models'); if (window.innerWidth < 768) setCollapsed(true); }}
+                        className={cn(
+                            "w-full justify-start gap-2 h-10",
+                            collapsed ? "justify-center px-0" : "px-4"
+                        )}
+                        title="Model & Usage"
+                    >
+                        <Cloud className="w-4 h-4 flex-shrink-0" />
+                        {!collapsed && <span>Models</span>}
                     </Button>
 
                     <Button

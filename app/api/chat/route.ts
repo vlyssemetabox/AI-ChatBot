@@ -300,6 +300,7 @@ export async function POST(req: NextRequest) {
                     try {
                         await db.insert(usageLogs).values({
                             userId: userId,
+                            orgId: orgId,
                             model,
                             tokensIn,
                             tokensOut,

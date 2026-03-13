@@ -14,7 +14,6 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
     try {
         const { userId, orgId, role } = await getUserOrgContext();
-        console.log(`[DEBUG] Usage API called for Org: ${orgId}, Role: ${role}`);
 
         if (!orgId) {
             return Response.json({
